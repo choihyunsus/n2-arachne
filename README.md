@@ -373,6 +373,12 @@ User: "Fix the login timeout bug"
 
 Apache-2.0
 
+## ⭐ Star History
+
+If you find Arachne helpful, please consider giving us a star! ⭐
+
+[![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
+
 ---
 
 *Arachne — the greatest weaver. Your code, perfectly woven.* 🕷️

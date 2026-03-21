@@ -373,6 +373,12 @@ Arachne는 독립 실행도 되지만, **Soul**(세션 기억)이나 **QLN**(도
 
 Apache-2.0
 
+## ⭐ Star History
+
+Arachne가 도움이 되셨다면, 별 하나 부탁드립니다! ⭐
+
+[![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
+
 ---
 
 *Arachne — 그리스 신화 최고의 직조사. 코드의 실을 엮어 완벽한 맥락을 짜냅니다.* 🕷️
