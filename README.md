@@ -43,6 +43,18 @@ When your project has 500 files, AI can't read them all. So what happens?
 > **Tokens** = units of text AI reads. More tokens = more cost, slower, less accurate.
 > AI has a limited "context window" — like a desk that can only hold so many papers.
 
+### 📊 Real-World Benchmark (N2 Browser — 3,219 files)
+
+| Metric | Value |
+|--------|:-----:|
+| **Project size** | 3,219 files, **4.68M tokens** |
+| **Arachne output** | **14,074 tokens** |
+| **Compression** | **333x** (99.7% reduction) |
+| **Index time** | 627ms (incremental: 0ms) |
+| **DB size** | 24 MB |
+
+> *Measured on a real production project. Arachne delivered exactly what AI needed — 333x less data, same accuracy.*
+
 ---
 
 ## 🕷️ The Solution — Arachne Picks Exactly What AI Needs
