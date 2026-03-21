@@ -1,8 +1,8 @@
-// context-tools.js — MCP 도구 등록 (n2_context 통합 도구)
-// QLN의 n2_qln_call과 동일한 패턴: 1 도구, 여러 액션
+// context-tools.js — MCP tool registration (unified n2_arachne tool)
+// Same pattern as QLN's n2_qln_call: 1 tool, multiple actions
 
 /**
- * MCP 도구 등록
+ * Register MCP tools
  * @param {import('@modelcontextprotocol/sdk/server/mcp.js').McpServer} server
  * @param {typeof import('zod')} z
  * @param {import('../lib/search').BM25Search} search
@@ -13,45 +13,45 @@
 function registerContextTools(server, z, search, indexer, backup, assembler, config, vectorStore) {
     server.tool(
         'n2_arachne',
-        'Arachne — 거미줄처럼 코드를 엮어 AI에게 최적의 컨텍스트를 제공하는 도구. 검색/인덱싱/백업 지원.',
+        'Arachne — Weaves code into optimal AI context. Supports search/indexing/assembly/backup.',
         {
             action: z.enum(['assemble', 'search', 'index', 'status', 'files', 'backup', 'restore', 'gc'])
-                .describe('실행할 액션 (assemble: AI 컨텍스트 자동 조립 ★핵심)'),
-            // search 파라미터
+                .describe('Action to execute (assemble: auto AI context assembly ★core)'),
+            // search parameters
             query: z.string().optional()
-                .describe('검색 쿼리 (search 액션 시 필수)'),
+                .describe('Search query (required for search action)'),
             topK: z.number().optional()
-                .describe('검색 결과 수 (기본: 10)'),
+                .describe('Number of search results (default: 10)'),
             language: z.string().optional()
-                .describe('언어 필터 (js, ts, py, rs, ...)'),
-            // index 파라미터
+                .describe('Language filter (js, ts, py, rs, ...)'),
+            // index parameters
             path: z.string().optional()
-                .describe('인덱싱 대상 경로 (기본: 프로젝트 루트)'),
+                .describe('Indexing target path (default: project root)'),
             force: z.boolean().optional()
-                .describe('true면 전체 재인덱싱'),
-            // backup 파라미터
+                .describe('If true, force full re-indexing'),
+            // backup parameters
             label: z.string().optional()
-                .describe('백업 라벨 (사람이 읽을 수 있는 이름)'),
-            // restore/searchBackup 파라미터
+                .describe('Backup label (human-readable name)'),
+            // restore/searchBackup parameters
             backupId: z.string().optional()
-                .describe('백업 ID (없으면 최신)'),
+                .describe('Backup ID (defaults to latest)'),
             searchBackups: z.boolean().optional()
-                .describe('true면 백업 DB도 검색'),
-            // gc 파라미터
+                .describe('If true, also search backup DBs'),
+            // gc parameters
             maxAge: z.number().optional()
-                .describe('N일 이상 된 백업 삭제'),
+                .describe('Delete backups older than N days'),
             maxCount: z.number().optional()
-                .describe('최대 백업 수'),
-            // files 파라미터
+                .describe('Maximum number of backups to keep'),
+            // files parameters
             pattern: z.string().optional()
-                .describe('파일 필터 glob 패턴'),
-            // assemble 파라미터
+                .describe('File filter glob pattern'),
+            // assemble parameters
             activeFile: z.string().optional()
-                .describe('현재 작업 중인 파일 경로 (assemble 시 사용)'),
+                .describe('Current active file path (used in assemble)'),
             budget: z.number().optional()
-                .describe('토큰 예산 (기본: 40000)'),
+                .describe('Token budget (default: 40000)'),
             layers: z.array(z.string()).optional()
-                .describe('사용할 레이어 ["fixed", "shortTerm", "associative", "spare"]'),
+                .describe('Layers to use ["fixed", "shortTerm", "associative", "spare"]'),
         },
         async ({ action, query, topK, language, path: subPath, force,
                  label, backupId, searchBackups, maxAge, maxCount, pattern,
@@ -85,7 +85,7 @@ function registerContextTools(server, z, search, indexer, backup, assembler, con
     );
 }
 
-// ── 액션 핸들러 ──
+// ── Action Handlers ──
 
 function handleSearch(search, backup, { query, topK, language, searchBackups, backupId }) {
     if (!query) {
@@ -128,7 +128,7 @@ function handleSearch(search, backup, { query, topK, language, searchBackups, ba
 async function handleIndex(indexer, backup, config, { subPath, force }) {
     const projectDir = config.projectDir || process.cwd();
 
-    // 전체 재인덱싱 전 자동 백업
+    // Auto backup before full re-indexing
     if (force && config.backup?.autoBackupOnReindex && backup) {
         try {
             await backup.create('pre-reindex', 'pre-reindex');
@@ -156,7 +156,7 @@ function handleStatus(indexer, backup, vectorStore) {
         ...stats.languages.map(l => `  ${l.language || 'unknown'}: ${l.cnt} files`),
     ];
 
-    // Phase 3: 임베딩 통계
+    // Phase 3: Embedding statistics
     if (vectorStore) {
         const embeddedCount = vectorStore.getEmbeddedCount();
         lines.push(`\n🧠 Semantic Search:`);
@@ -177,7 +177,7 @@ function handleStatus(indexer, backup, vectorStore) {
 function handleFiles(indexer, { language, pattern }) {
     let files = indexer.getFiles({ language });
 
-    // glob 패턴 필터 (간단 구현)
+    // Glob pattern filter (simple implementation)
     if (pattern) {
         const regex = new RegExp(pattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
         files = files.filter(f => regex.test(f.path));

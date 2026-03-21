@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Arachne — MCP server entry point
-// 거미줄처럼 코드를 엮어 AI에게 최적의 컨텍스트를 제공하는 지능형 코드 어셈블러
+// Weaves code into optimal AI context, like the greatest weaver of Greek mythology
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { z } = require('zod');
@@ -18,18 +18,18 @@ const { registerContextTools } = require('./tools/context-tools');
 async function main() {
     const config = loadConfig();
 
-    // 1. Store 초기화 (SQLite + Phase 3 마이그레이션)
+    // 1. Initialize Store (SQLite + Phase 3 migration)
     const store = new Store(config.dataDir);
     await store.init();
     console.error(`[n2-arachne] DB initialized: ${store.dbPath}`);
 
-    // 2. 엔진 초기화
+    // 2. Initialize engines
     const indexer = new Indexer(store, config);
     const search = new BM25Search(store, config.search);
     const backup = new Backup(store, config.backup);
     const assembler = new Assembler(store, search, config.assembly);
 
-    // 3. Phase 3: 시맨틱 검색 (embedding.enabled 시에만)
+    // 3. Phase 3: Semantic search (only when embedding.enabled)
     let vectorStore = null;
     if (config.embedding?.enabled) {
         const embedding = new Embedding(config.embedding);
@@ -44,7 +44,7 @@ async function main() {
         }
     }
 
-    // 4. 자동 인덱싱 (설정 활성화 시)
+    // 4. Auto-indexing (when enabled in config)
     if (config.indexing.autoIndex) {
         const projectDir = config.projectDir || process.cwd();
         console.error(`[n2-arachne] Auto-indexing: ${projectDir}`);
@@ -53,7 +53,7 @@ async function main() {
             const result = await indexer.index(projectDir);
             console.error(`[n2-arachne] Indexed: ${result.indexed} files (${result.skipped} unchanged, ${result.removed} stale) in ${result.elapsed}ms`);
 
-            // 임베딩 자동 생성
+            // Auto-generate embeddings
             if (vectorStore?.isReady) {
                 const embedResult = await vectorStore.embedNewChunks();
                 console.error(`[n2-arachne] Embedded: ${embedResult.embedded} chunks (${embedResult.errors} errors)`);
@@ -63,17 +63,17 @@ async function main() {
         }
     }
 
-    // 5. MCP 서버 생성
+    // 5. Create MCP server
     const pkg = require('./package.json');
     const server = new McpServer({
         name: 'n2-arachne',
         version: pkg.version,
     });
 
-    // 6. MCP 도구 등록 (Phase 3: vectorStore 추가)
+    // 6. Register MCP tools (Phase 3: vectorStore added)
     registerContextTools(server, z, search, indexer, backup, assembler, config, vectorStore);
 
-    // 7. Stdio 트랜스포트 연결
+    // 7. Connect stdio transport
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.error(`[n2-arachne] MCP server ready (v${pkg.version})`);
@@ -83,4 +83,3 @@ main().catch(err => {
     console.error(`[n2-arachne] Fatal: ${err.message}`);
     process.exit(1);
 });
-

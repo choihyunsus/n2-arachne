@@ -1,21 +1,21 @@
-// config.default.js — Context Assembler 기본 설정 (배포용)
-// 로컬 오버라이드: config.local.js (gitignored)
+// config.default.js — Arachne default configuration (for distribution)
+// Local override: config.local.js (gitignored)
 module.exports = {
-    // 데이터 저장 경로
+    // Data storage path
     dataDir: './data',
 
-    // 인덱싱 설정
+    // Indexing settings
     indexing: {
         autoIndex: true,
         incremental: true,
-        maxFileSize: 1024 * 1024,   // 1MB 초과 파일 무시
+        maxFileSize: 1024 * 1024,   // Skip files over 1MB
         maxFiles: 50000,
         chunkStrategy: 'regex',     // 'regex' | 'ast'
         supportedLanguages: ['js', 'ts', 'jsx', 'tsx', 'py', 'rs', 'go', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'rb', 'php', 'swift', 'kt'],
         alsoIndexAsText: ['md', 'json', 'yaml', 'yml', 'toml', 'xml', 'html', 'css', 'sql', 'sh', 'bat', 'ps1'],
     },
 
-    // 컨텍스트 조립 설정
+    // Context assembly settings
     assembly: {
         defaultBudget: 40000,
         layers: {
@@ -27,13 +27,13 @@ module.exports = {
         dependencyDepth: 2,
     },
 
-    // 검색 설정
+    // Search settings
     search: {
         bm25: { k1: 1.2, b: 0.75 },
         topK: 10,
     },
 
-    // 임베딩 설정 (Phase 3)
+    // Embedding settings (Phase 3)
     embedding: {
         enabled: false,
         provider: 'ollama',
@@ -41,7 +41,7 @@ module.exports = {
         endpoint: 'http://localhost:11434',
     },
 
-    // 파일 제외 패턴
+    // File exclusion patterns
     ignore: {
         useGitignore: true,
         useContextignore: true,
@@ -60,7 +60,7 @@ module.exports = {
         ],
     },
 
-    // 백업 설정
+    // Backup settings
     backup: {
         enabled: true,
         dir: './data/backups',
@@ -70,7 +70,7 @@ module.exports = {
         externalBackupDir: null,
     },
 
-    // 통합 설정
+    // Integration settings
     integrations: {
         soul: { enabled: false, dataDir: null },
         qln: { enabled: false },

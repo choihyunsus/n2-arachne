@@ -1,0 +1,12 @@
+test/
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+config.local.js
+.git/
+.gitignore
+task.md
+walkthrough.md
+implementation_plan.md

@@ -1,7 +1,7 @@
 {
     "name": "n2-arachne",
     "version": "3.0.1",
-    "description": "Arachne — 거미줄처럼 코드를 엮어 AI에게 최적의 컨텍스트를 조립하는 MCP 서버. 어떤 AI 프로바이더든 동작.",
+    "description": "Arachne — Weaves code into optimal AI context via MCP. BM25 + semantic search, 4-layer assembly, any AI provider.",
     "main": "index.js",
     "bin": {
         "n2-arachne": "./index.js"
