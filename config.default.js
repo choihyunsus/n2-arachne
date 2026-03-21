@@ -73,8 +73,8 @@ module.exports = {
 
     // Integration settings
     integrations: {
-        soul: { enabled: false, dataDir: null },
+        soul: { enabled: true, dataDir: null },
         qln: { enabled: false },
-        ark: { enabled: false, rulesDir: null },
+        ark: { enabled: true, rulesDir: null },
     },
 };
