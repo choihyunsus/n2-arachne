@@ -179,17 +179,73 @@ Arachne registers a single MCP tool `n2_arachne` with these actions:
 }
 ```
 
-## 🌐 N2 Ecosystem
+## 🌐 N2 Ecosystem — Better Together
 
-| Package | Role | npm |
-|---------|------|-----|
-| **QLN** | Tool routing (1000+ tools → 1 router) | `n2-qln` |
-| **Soul** | Agent memory & session management | `n2-soul` |
-| **Ark** | Security policies & code verification | `n2-ark` |
-| **Arachne** | Code context auto-assembly 🕸️ | `n2-arachne` |
+| Package | Role | npm | Standalone |
+|---------|------|-----|:----------:|
+| **QLN** | Tool routing (1000+ tools → 1 router) | `n2-qln` | ✅ |
+| **Soul** | Agent memory & session management | `n2-soul` | ✅ |
+| **Ark** | Security policies & code verification | `n2-ark` | ✅ |
+| **Arachne** | Code context auto-assembly 🕸️ | `n2-arachne` | ✅ |
 
-> Each package works **standalone**. Together, they amplify each other.
-> Works with **any AI provider**, on **any platform**.
+> Every package works **100% standalone**. But when combined, magic happens:
+
+### 🔗 Synergy: How They Work Together
+
+```
+User: "Fix the login timeout bug"
+     │
+     ▼
+┌─── QLN (Router) ──────────────────────────────────────┐
+│ 1000+ tools → Semantic routing finds:                 │
+│   → n2_arachne.assemble (context)                     │
+│   → n2_arachne.search (code search)                   │
+│ Token cost: 2 tool defs instead of 1000+              │
+└────────────────┬──────────────────────────────────────┘
+                 │
+                 ▼
+┌─── Arachne (Context) ─────────────────────────────────┐
+│ L1: Project tree overview                              │
+│ L2: auth/login.ts (current file)                       │
+│ L3: BM25 + semantic search → timeout-related code      │
+│     + dependency chain: login.ts → api.ts → http.ts    │
+│ L4: Frequently accessed config files                   │
+│ → 30K tokens of perfectly curated context              │
+└────────────────┬──────────────────────────────────────┘
+                 │
+                 ▼
+┌─── Soul (Memory) ─────────────────────────────────────┐
+│ "Last session, Rose fixed a similar timeout in         │
+│  api.ts line 47. Decision: increased to 30s."          │
+│ → Past context + decisions + handoff notes             │
+│ → KV-Cache: instant session restoration                │
+└────────────────┬──────────────────────────────────────┘
+                 │
+                 ▼
+┌─── Ark (Security) ────────────────────────────────────┐
+│ ✅ No hardcoded credentials in generated code          │
+│ ✅ Timeout value from config, not magic number         │
+│ ✅ Error handling follows project conventions           │
+│ → Code verification before commit                      │
+└───────────────────────────────────────────────────────┘
+```
+
+### 📊 Solo vs Combined
+
+| Scenario | Solo | Combined |
+|----------|------|----------|
+| **Token usage** | AI sees all 1000+ tools | QLN routes → AI sees 2-3 tools |
+| **Context quality** | AI guesses which files matter | Arachne provides exact relevant code |
+| **Memory** | AI forgets everything each turn | Soul remembers past sessions + decisions |
+| **Code safety** | No guardrails | Ark validates before deploy |
+| **Setup** | Each tool works independently | Zero extra config — auto-detection |
+
+### 💡 Real-World Impact
+
+- **QLN + Arachne**: QLN routes the request to Arachne → Arachne provides perfect context → AI generates accurate code on the first try. No more "which file was that in?"
+- **Soul + Arachne**: Soul remembers what you worked on last session → Arachne indexes those files with higher priority → continuity across sessions
+- **Ark + Arachne**: Arachne provides code context → AI generates code → Ark validates it follows project patterns. Catch bugs before they ship.
+- **All 4 together**: The AI becomes a team member who **remembers everything**, **finds anything**, **uses the right tools**, and **follows the rules**.
 
 ## 📄 License
 
