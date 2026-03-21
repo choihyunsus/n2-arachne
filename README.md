@@ -14,6 +14,17 @@ AI coding assistants suffer from **amnesia every turn**. As projects grow, they 
 
 Arachne is a **local-first MCP server** that automatically assembles optimal code context for any AI:
 
+### Why Arachne?
+
+- 💰 **Save tokens, save money** — Only sends what's relevant. 30K budget instead of dumping 200K tokens = real cost savings
+- 🧠 **Beats "Lost in the Middle"** — Output arrangement (L1→L3→L4→L2) prevents critical context from being buried mid-prompt ([research-backed](https://arxiv.org/abs/2307.03172))
+- 🔓 **Zero external dependencies** — No Docker, no cloud, no API keys. Just `npm install` and go
+- ⚡ **Blazing fast** — 21 files indexed in 12ms. Incremental updates in sub-second
+- 📦 **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
+- 🆓 **100% free & open source** — Apache-2.0, no hidden costs, no telemetry
+- 🔌 **Plug & play** — Add MCP config → done. Zero code changes to your project
+- 🌍 **Multi-language deps** — Follows import chains across JS/TS, Python, Rust, Go
+
 ```
 Your Project → [Index] → SQLite → [4-Layer Assembly] → AI gets perfect context
 ```
@@ -52,7 +63,7 @@ Your Project → [Index] → SQLite → [4-Layer Assembly] → AI gets perfect c
 Output order: L1 → L3 → L4 → L2  (mitigates "Lost in the Middle")
 ```
 
-## 🧠 Semantic Search (Optional)
+## 🧠 Semantic Search (Optional, Zero Lock-in)
 
 When Ollama is available, Arachne upgrades from keyword-only to **hybrid search**:
 
@@ -63,9 +74,11 @@ Cosine Similarity ─────┘
 (nomic-embed-text 768D)
 ```
 
-- **sqlite-vec** for SIMD-accelerated KNN vector search
-- **Graceful degradation**: No Ollama? Falls back to BM25-only. Zero crashes.
+- **sqlite-vec** for SIMD-accelerated (AVX2/SSE2/Neon) KNN vector search
+- **768-dimensional** embeddings via Ollama `nomic-embed-text` — runs 100% local
+- **Graceful degradation**: No Ollama? Falls back to BM25-only. **Zero crashes. Always works.**
 - Enable in config: `embedding.enabled = true`
+- Vector storage: ~3KB per chunk. 5000 chunks = just 15MB on disk
 
 ## 🛡️ Stability: 104 Tests, Zero Failures
 
