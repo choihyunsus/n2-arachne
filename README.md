@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 
+**[한국어](README.ko.md)** | English
+
 > Weave your codebase into the perfect context for AI — like Arachne, the greatest weaver of Greek mythology. 🕷️
 
 ## 🤔 The Problem — Why AI Gets Your Code Wrong
@@ -241,6 +243,63 @@ Arachne registers a single MCP tool `n2_arachne` with these actions:
   "budget": 20000
 }
 ```
+
+## 🔗 Connect with Soul / QLN
+
+Arachne works great standalone, but becomes far more powerful with **Soul** (session memory) and **QLN** (tool routing).
+
+Setup is simple — just register them together in your MCP config:
+
+### Soul + Arachne Together
+
+```json
+{
+  "mcpServers": {
+    "n2-soul": {
+      "command": "node",
+      "args": ["/path/to/n2-soul/index.js"]
+    },
+    "n2-arachne": {
+      "command": "node",
+      "args": ["/path/to/n2-arachne/index.js"],
+      "env": {
+        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
+      }
+    }
+  }
+}
+```
+
+> 💡 **Zero extra config needed!** Register both servers in the same MCP config and AI automatically uses both tools.
+> - `Soul` remembers past session work and decisions
+> - `Arachne` finds the exact code and delivers it to AI
+> - Result: AI picks up right where you left off — no "what was I working on?"
+
+### Full N2 Stack (Soul + Arachne + QLN)
+
+```json
+{
+  "mcpServers": {
+    "n2-soul": {
+      "command": "node",
+      "args": ["/path/to/n2-soul/index.js"]
+    },
+    "n2-arachne": {
+      "command": "node",
+      "args": ["/path/to/n2-arachne/index.js"],
+      "env": {
+        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
+      }
+    },
+    "n2-qln": {
+      "command": "node",
+      "args": ["/path/to/n2-qln/index.js"]
+    }
+  }
+}
+```
+
+> Add QLN and even with 100+ MCP tools, AI automatically finds and uses only what it needs via QLN's semantic routing.
 
 ## 🌐 N2 Ecosystem — Better Together
 

@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 
+한국어 | **[English](README.md)**
+
 > 거미줄처럼 코드를 엮어 AI에게 최적의 컨텍스트를 조립하는 MCP 서버 🕷️
 
 ## 🤔 문제 — AI가 내 코드를 왜 틀리게 짜는 걸까?
@@ -241,6 +243,63 @@ Arachne는 `n2_arachne` MCP 도구를 등록합니다:
   "budget": 20000
 }
 ```
+
+## 🔗 Soul / QLN 연동하기
+
+Arachne는 독립 실행도 되지만, **Soul**(세션 기억)이나 **QLN**(도구 라우팅)과 함께 쓰면 훨씬 강력합니다.
+
+연동 방법은 간단합니다 — MCP 설정에 같이 등록하면 끝!
+
+### Soul + Arachne 함께 쓰기
+
+```json
+{
+  "mcpServers": {
+    "n2-soul": {
+      "command": "node",
+      "args": ["/path/to/n2-soul/index.js"]
+    },
+    "n2-arachne": {
+      "command": "node",
+      "args": ["/path/to/n2-arachne/index.js"],
+      "env": {
+        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
+      }
+    }
+  }
+}
+```
+
+> 💡 **추가 설정 필요 없음!** 두 서버를 같은 MCP 설정에 등록하면, AI가 자동으로 양쪽 도구를 사용합니다.
+> - `Soul`이 이전 세션의 작업 내용과 결정을 기억
+> - `Arachne`가 해당 코드를 정확하게 찾아서 AI에게 전달
+> - 결과: AI가 "지난번에 뭐 했더라?" 없이 바로 이어서 작업
+
+### 전체 N2 스택 (Soul + Arachne + QLN)
+
+```json
+{
+  "mcpServers": {
+    "n2-soul": {
+      "command": "node",
+      "args": ["/path/to/n2-soul/index.js"]
+    },
+    "n2-arachne": {
+      "command": "node",
+      "args": ["/path/to/n2-arachne/index.js"],
+      "env": {
+        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
+      }
+    },
+    "n2-qln": {
+      "command": "node",
+      "args": ["/path/to/n2-qln/index.js"]
+    }
+  }
+}
+```
+
+> QLN까지 더하면, MCP 도구가 100개+ 있어도 AI는 QLN을 통해 필요한 도구만 자동으로 찾아 사용합니다.
 
 ## 🌐 N2 에코시스템 — 함께 쓰면 더 강력
 
