@@ -82,6 +82,14 @@ You: "Fix the login timeout bug"
 - 🌍 **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go
 - 🦙 **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
 
+### 🕷️ Arachne in 4 Panels
+
+![What is Arachne? — AI gets 500 files but can't find the bug. Arachne picks the 4 relevant files. 30K tokens, perfect fix every time.](docs/arachne-comic.png)
+
+### 🤝 Soul + Arachne Synergy
+
+![Soul remembers past sessions. Arachne finds the code. Together, AI never forgets and never misses.](docs/soul-synergy-comic.png)
+
 ## ✨ Key Features
 
 | Feature | Description |
@@ -159,6 +167,8 @@ Total:                       104/104 ✅
 ```
 
 ## 📦 Installation
+
+> 💡 **Pro tip**: The best way to install? Just ask your AI agent: *"Install n2-arachne for me."* It knows what to do. 🕷️
 
 ```bash
 npm install n2-arachne
