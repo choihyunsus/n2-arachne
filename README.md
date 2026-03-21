@@ -6,28 +6,81 @@
 
 > Weave your codebase into the perfect context for AI — like Arachne, the greatest weaver of Greek mythology. 🕷️
 
-## The Problem
+## 🤔 The Problem — Why AI Gets Your Code Wrong
 
-AI coding assistants suffer from **amnesia every turn**. As projects grow, they can't see your entire codebase. Without relevant context, they generate **inaccurate code**.
+Imagine going to a doctor and saying **"I have a headache."**
 
-## The Solution
+- ❌ **Bad doctor**: reads your entire 500-page medical history, gets confused, prescribes the wrong medicine
+- ✅ **Good doctor**: looks at relevant records only — recent symptoms, medications, allergies — and nails the diagnosis
 
-Arachne is a **local-first MCP server** that automatically assembles optimal code context for any AI:
+**AI coding assistants are like that bad doctor.**
+
+When your project has 500 files, AI can't read them all. So what happens?
+
+```
+📂 Your Project (500 files, 2M tokens)
+│
+├── auth/login.ts        ← 🎯 The bug is HERE
+├── auth/session.ts      ← 🔗 login imports this
+├── api/http.ts          ← 🔗 session imports this
+├── utils/config.ts      ← ⚙️ timeout settings live here
+│
+├── pages/home.tsx       ← ❌ completely irrelevant
+├── pages/about.tsx      ← ❌ completely irrelevant
+├── components/Button.tsx ← ❌ completely irrelevant
+└── ... 493 more files    ← ❌ all irrelevant
+```
+
+| Approach | What AI receives | Result |
+|----------|-----------------|--------|
+| ❌ Dump everything | 2,000,000 tokens | Exceeds context window, AI confused |
+| ❌ Random files | ~50,000 tokens | Misses critical code, wrong fix |
+| ✅ **Arachne** | **30,000 tokens** (4 relevant files) | Precise fix, every time |
+
+> **Tokens** = units of text AI reads. More tokens = more cost, slower, less accurate.
+> AI has a limited "context window" — like a desk that can only hold so many papers.
+
+---
+
+## 🕷️ The Solution — Arachne Picks Exactly What AI Needs
+
+Arachne is a **local MCP server** that acts like that good doctor. It reads your entire codebase once, understands the structure, and **only sends what's relevant** to AI.
+
+```
+You: "Fix the login timeout bug"
+                │
+                ▼
+┌──────────────────────────────────────────────────────┐
+│  🕷️ Arachne: "I'll find exactly what you need"      │
+│                                                      │
+│  L1 📁 Project tree (so AI knows the structure)      │
+│  L2 📄 login.ts (the file you're working on)         │
+│  L3 🔗 http.ts, session.ts (found via search +       │
+│        dependency chain: login → session → http)     │
+│  L4 ⚙️ config.ts (frequently accessed, has timeout)  │
+│                                                      │
+│  → 30,000 tokens of perfectly curated context        │
+└──────────────────────────────────────────────────────┘
+                │
+                ▼
+        AI generates accurate fix ✅
+```
+
+**No manual file selection. No prompt engineering. Just ask.**
+
+---
 
 ### Why Arachne?
 
-- 💰 **Save tokens, save money** — Only sends what's relevant. 30K budget instead of dumping 200K tokens = real cost savings
-- 🧠 **Beats "Lost in the Middle"** — Output arrangement (L1→L3→L4→L2) prevents critical context from being buried mid-prompt ([research-backed](https://arxiv.org/abs/2307.03172))
-- 🔓 **Zero external dependencies** — No Docker, no cloud, no API keys. Just `npm install` and go
+- 💰 **98.5% token savings** — 30K instead of 2M tokens. Real money saved on API calls
+- 🧠 **Beats "Lost in the Middle"** — Smart output ordering (L1→L3→L4→L2) keeps critical code where AI pays attention ([research-backed](https://arxiv.org/abs/2307.03172))
+- 🔓 **Zero external deps** — No Docker, no cloud, no API keys. Just `npm install` and go
 - ⚡ **Blazing fast** — 21 files indexed in 12ms. Incremental updates in sub-second
 - 📦 **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
 - 🆓 **100% free & open source** — Apache-2.0, no hidden costs, no telemetry
 - 🔌 **Plug & play** — Add MCP config → done. Zero code changes to your project
-- 🌍 **Multi-language deps** — Follows import chains across JS/TS, Python, Rust, Go
-
-```
-Your Project → [Index] → SQLite → [4-Layer Assembly] → AI gets perfect context
-```
+- 🌍 **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go
+- 🦙 **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
 
 ## ✨ Key Features
 
