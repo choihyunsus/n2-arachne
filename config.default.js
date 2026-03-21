@@ -11,6 +11,7 @@ module.exports = {
         maxFileSize: 1024 * 1024,   // Skip files over 1MB
         maxFiles: 50000,
         chunkStrategy: 'regex',     // 'regex' | 'ast'
+        tokenMultiplier: 3.5,       // Chars per token. English/code: 3.5, CJK (ko/zh/ja): 1.5
         supportedLanguages: ['js', 'ts', 'jsx', 'tsx', 'py', 'rs', 'go', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'rb', 'php', 'swift', 'kt'],
         alsoIndexAsText: ['md', 'json', 'yaml', 'yml', 'toml', 'xml', 'html', 'css', 'sql', 'sh', 'bat', 'ps1'],
     },
