@@ -1,6 +1,6 @@
 {
     "name": "n2-arachne",
-    "version": "3.2.0",
+    "version": "3.2.1",
     "description": "Arachne — Weaves code into optimal AI context via MCP. BM25 + semantic search, 4-layer assembly, any AI provider.",
     "main": "index.js",
     "bin": {
