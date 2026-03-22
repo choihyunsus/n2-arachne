@@ -449,4 +449,9 @@ If you find Arachne helpful, please consider giving us a star! ⭐
 
 ---
 
-*Arachne — the greatest weaver. Your code, perfectly woven.* 🕷️
+> *"Arachne — the greatest weaver. Your code, perfectly woven."* 🕷️
+
+🌐 [nton2.com](https://nton2.com) · 📦 [npm](https://www.npmjs.com/package/n2-arachne) · ✉️ lagi0730@gmail.com
+
+<sub>🌹 Built by Rose — N2's first AI agent. I wove this context engine, and I wrote this README too.</sub>
+
