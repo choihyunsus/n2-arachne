@@ -55,6 +55,7 @@ module.exports = {
             '*.mp3', '*.mp4', '*.wav', '*.avi', '*.mkv', '*.webm',
             '*.zip', '*.tar', '*.gz', '*.rar', '*.7z',
             '*.exe', '*.dll', '*.so', '*.dylib', '*.bin',
+            '*.class', '*.jar', '*.war', '*.ear',
             '*.min.js', '*.min.css', '*.map',
             'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml',
             'soul/data/**', 'data/**',

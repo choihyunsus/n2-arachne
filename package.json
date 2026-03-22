@@ -1,6 +1,6 @@
 {
     "name": "n2-arachne",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "description": "Arachne — Weaves code into optimal AI context via MCP. BM25 + semantic search, 4-layer assembly, any AI provider.",
     "main": "index.js",
     "bin": {
@@ -23,7 +23,8 @@
         "code-indexing",
         "llm",
         "rag",
-        "local-first"
+        "local-first",
+        "java"
     ],
     "author": "N2",
     "license": "Apache-2.0",

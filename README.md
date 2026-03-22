@@ -94,7 +94,7 @@ You: "Fix the login timeout bug"
 - 📦 **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
 - 🆓 **100% free & open source** — Apache-2.0, no hidden costs, no telemetry
 - 🔌 **Plug & play** — Add MCP config → done. Zero code changes to your project
-- 🌍 **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go
+- 🌍 **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go, **Java**
 - 🦙 **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
 
 ### 🕷️ Arachne in 4 Panels
@@ -114,7 +114,7 @@ You: "Fix the login timeout bug"
 | ⚡ **Incremental** | Only re-indexes changed files. Sub-second updates |
 | 🧠 **Hybrid Search** | BM25 keyword + semantic vector search (Ollama embeddings) |
 | 🕸️ **4-Layer Assembly** | Smart context paging within token budget |
-| 🔗 **Dependency Graph** | Follows import chains across JS/TS, Python, Rust, Go |
+| 🔗 **Dependency Graph** | Follows import chains across JS/TS, Python, Rust, Go, **Java** |
 | 🗃️ **Backup & Restore** | SQLite online backup with in-backup search |
 
 ## 🏗️ Architecture: 4-Layer Context Assembly
@@ -155,6 +155,53 @@ Cosine Similarity ─────┘
 - **Graceful degradation**: No Ollama? Falls back to BM25-only. **Zero crashes. Always works.**
 - Enable in config: `embedding.enabled = true`
 - Vector storage: ~3KB per chunk. 5000 chunks = just 15MB on disk
+
+## ☕ Java Support — Built for Enterprise
+
+Arachne provides **first-class Java support**, designed for large-scale enterprise codebases (5M+ LOC):
+
+| Feature | Description |
+|---------|-------------|
+| **Smart Chunking** | Detects `class`, `interface`, `enum`, `method`, `@interface` (annotations) |
+| **Large Class Splitting** | Classes over 500 tokens are **automatically sub-chunked** into individual methods |
+| **Import Resolution** | Parses `import com.example.Service` and `import static org.junit.Assert.*` |
+| **Access Modifiers** | Handles `public`, `private`, `protected`, `abstract`, `final`, `synchronized` |
+| **Generics** | Correctly processes `<T extends Comparable<T>>` and complex generic types |
+| **Spring/JUnit** | Tested with Spring Boot `@RestController`, JUnit5 static imports, Mockito |
+| **Binary Exclusion** | Automatically ignores `.class`, `.jar`, `.war`, `.ear` files |
+
+### How Large Class Sub-Chunking Works
+
+```
+// 500+ token class → automatically split into methods
+public class UserService {       // ← detected as container
+    public User findById() {}    // ← sub-chunk 1
+    public List<User> findAll()  // ← sub-chunk 2
+    public User save() {}        // ← sub-chunk 3
+    // ... fields, constructor   // ← remainder chunk
+}
+
+// Small class (<500 tokens) → kept as single chunk (no overhead)
+public class TinyDTO { ... }     // ← single chunk, efficient
+```
+
+> 🎯 **Why this matters for 5M LOC projects**: A single Java class can have 50+ methods spanning thousands of lines. Without sub-chunking, AI would receive the entire class as one blob. With Arachne, AI gets individual methods — enabling precise, targeted code generation.
+
+### 💰 Token Impact: Less Is More
+
+```
+Without sub-chunking:
+  AI asks: "Fix the findById bug"
+  → BM25 hits UserService class
+  → Entire class sent: 6,000 tokens  💸
+
+With sub-chunking:
+  AI asks: "Fix the findById bug"
+  → BM25 hits findById() method only
+  → Just the method sent: 80 tokens   💰 75x savings!
+```
+
+> Sub-chunking doesn't cost extra — it **saves** tokens by sending only what's relevant instead of entire classes.
 
 ## 🛡️ Stability: 104 Tests, Zero Failures
 
