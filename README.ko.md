@@ -5,7 +5,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 
-한국어 | **[English](README.md)**
+한국어 | **[English](README.md)** | **[日本語](README.ja.md)**
 
 > 거미줄처럼 코드를 엮어 AI에게 최적의 컨텍스트를 조립하는 MCP 서버 🕷️
 
