@@ -1,7 +1,7 @@
 # 🕸️ Arachne (n2-arachne)
 
 [![npm version](https://img.shields.io/npm/v/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Dual%20(Apache--2.0%20%2B%20Commercial)-blue.svg)](LICENSE)
 [![npm downloads](https://img.shields.io/npm/dm/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 
@@ -92,7 +92,7 @@ You: "Fix the login timeout bug"
 - 🔓 **Zero external deps** — No Docker, no cloud, no API keys. Just `npm install` and go
 - ⚡ **Blazing fast** — 21 files indexed in 12ms. Incremental updates in sub-second
 - 📦 **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
-- 🆓 **100% free & open source** — Apache-2.0, no hidden costs, no telemetry
+- 🆓 **Free for personal & open-source use** — Dual license (Apache-2.0 + Commercial), no telemetry
 - 🔌 **Plug & play** — Add MCP config → done. Zero code changes to your project
 - 🌍 **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go, **Java**
 - 🦙 **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
@@ -431,7 +431,15 @@ User: "Fix the login timeout bug"
 
 ## 📄 License
 
-Apache-2.0
+This project is **dual-licensed**:
+
+| Use Case | License | Cost |
+|----------|---------|------|
+| Personal / Educational | Apache 2.0 | **Free** |
+| Open-source (non-commercial) | Apache 2.0 | **Free** |
+| Commercial / Enterprise | Commercial License | [Contact us](mailto:lagi0730@gmail.com) |
+
+See [LICENSE](./LICENSE) for full details.
 
 ## ⭐ Star History
 
