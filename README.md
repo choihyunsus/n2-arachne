@@ -443,8 +443,6 @@ See [LICENSE](./LICENSE) for full details.
 
 ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
-
 No coffee? A star is fine too ☕ → ⭐
 
 ---
