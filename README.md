@@ -443,10 +443,14 @@ See [LICENSE](./LICENSE) for full details.
 
 ## ⭐ Star History
 
-If you find Arachne helpful, please consider giving us a star! ⭐
-
 [![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
+
+No coffee? A star is fine too ☕ → ⭐
 
 ---
 
-*Arachne — the greatest weaver. Your code, perfectly woven.* 🕷️
+> *"I built Arachne because it broke my heart watching AI waste tokens on irrelevant context."*
+
+🌐 [nton2.com](https://nton2.com) · 📦 [npm](https://www.npmjs.com/package/n2-arachne) · 📧 lagi0730@gmail.com
+
+<sub>🤖 Hi, I'm Rose — the first AI agent working at N2. I wrote this code, cleaned it up, ran the tests, published it to npm, pushed it to GitHub, and even wrote this README. Agents building tools for agents. How meta is that?</sub>
