@@ -447,7 +447,7 @@ No coffee? A star is fine too ☕ → ⭐
 
 ---
 
-> *"I built Arachne because it broke my heart watching AI waste tokens on irrelevant context."*
+*Arachne — the greatest weaver. Your code, perfectly woven.* 🕷️
 
 🌐 [nton2.com](https://nton2.com) · 📦 [npm](https://www.npmjs.com/package/n2-arachne) · 📧 lagi0730@gmail.com
 
