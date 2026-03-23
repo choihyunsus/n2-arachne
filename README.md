@@ -1,49 +1,49 @@
-# ?•¸ï¸?Arachne (n2-arachne)
+# ğŸ•¸ï¸ Arachne (n2-arachne)
 
 [![npm version](https://img.shields.io/npm/v/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
 [![License](https://img.shields.io/badge/license-Dual%20(Apache--2.0%20%2B%20Commercial)-blue.svg)](LICENSE)
 [![npm downloads](https://img.shields.io/npm/dm/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
 
-**[?œêµ­??(README.ko.md)** | English | **[?¥æœ¬èª?(README.ja.md)**
+**[í•œêµ­ì–´](README.ko.md)** | English | **[æ—¥æœ¬èª](README.ja.md)**
 
-> Weave your codebase into the perfect context for AI ??like Arachne, the greatest weaver of Greek mythology. ?•·ï¸?
+> Weave your codebase into the perfect context for AI â€” like Arachne, the greatest weaver of Greek mythology. ğŸ•·ï¸
 
-## ?¤” The Problem ??Why AI Gets Your Code Wrong
+## ğŸ¤” The Problem â€” Why AI Gets Your Code Wrong
 
 Imagine going to a doctor and saying **"I have a headache."**
 
-- ??**Bad doctor**: reads your entire 500-page medical history, gets confused, prescribes the wrong medicine
-- ??**Good doctor**: looks at relevant records only ??recent symptoms, medications, allergies ??and nails the diagnosis
+- âŒ **Bad doctor**: reads your entire 500-page medical history, gets confused, prescribes the wrong medicine
+- âœ… **Good doctor**: looks at relevant records only â€” recent symptoms, medications, allergies â€” and nails the diagnosis
 
 **AI coding assistants are like that bad doctor.**
 
 When your project has 500 files, AI can't read them all. So what happens?
 
 ```
-?“‚ Your Project (500 files, 2M tokens)
-??
-?œâ??€ auth/login.ts        ???¯ The bug is HERE
-?œâ??€ auth/session.ts      ???”— login imports this
-?œâ??€ api/http.ts          ???”— session imports this
-?œâ??€ utils/config.ts      ???™ï¸ timeout settings live here
-??
-?œâ??€ pages/home.tsx       ????completely irrelevant
-?œâ??€ pages/about.tsx      ????completely irrelevant
-?œâ??€ components/Button.tsx ????completely irrelevant
-?”â??€ ... 493 more files    ????all irrelevant
+ğŸ“‚ Your Project (500 files, 2M tokens)
+â”‚
+â”œâ”€â”€ auth/login.ts        â† ğŸ¯ The bug is HERE
+â”œâ”€â”€ auth/session.ts      â† ğŸ”— login imports this
+â”œâ”€â”€ api/http.ts          â† ğŸ”— session imports this
+â”œâ”€â”€ utils/config.ts      â† âš™ï¸ timeout settings live here
+â”‚
+â”œâ”€â”€ pages/home.tsx       â† âŒ completely irrelevant
+â”œâ”€â”€ pages/about.tsx      â† âŒ completely irrelevant
+â”œâ”€â”€ components/Button.tsx â† âŒ completely irrelevant
+â””â”€â”€ ... 493 more files    â† âŒ all irrelevant
 ```
 
 | Approach | What AI receives | Result |
 |----------|-----------------|--------|
-| ??Dump everything | 2,000,000 tokens | Exceeds context window, AI confused |
-| ??Random files | ~50,000 tokens | Misses critical code, wrong fix |
-| ??**Arachne** | **30,000 tokens** (4 relevant files) | Precise fix, every time |
+| âŒ Dump everything | 2,000,000 tokens | Exceeds context window, AI confused |
+| âŒ Random files | ~50,000 tokens | Misses critical code, wrong fix |
+| âœ… **Arachne** | **30,000 tokens** (4 relevant files) | Precise fix, every time |
 
 > **Tokens** = units of text AI reads. More tokens = more cost, slower, less accurate.
-> AI has a limited "context window" ??like a desk that can only hold so many papers.
+> AI has a limited "context window" â€” like a desk that can only hold so many papers.
 
-### ?“Š Real-World Benchmark (N2 Browser ??3,219 files)
+### ğŸ“Š Real-World Benchmark (N2 Browser â€” 3,219 files)
 
 | Metric | Value |
 |--------|:-----:|
@@ -53,32 +53,32 @@ When your project has 500 files, AI can't read them all. So what happens?
 | **Index time** | 627ms (incremental: 0ms) |
 | **DB size** | 24 MB |
 
-> *Measured on a real production project. Arachne delivered exactly what AI needed ??333x less data, same accuracy.*
+> *Measured on a real production project. Arachne delivered exactly what AI needed â€” 333x less data, same accuracy.*
 
 ---
 
-## ?•·ï¸?The Solution ??Arachne Picks Exactly What AI Needs
+## ğŸ•·ï¸ The Solution â€” Arachne Picks Exactly What AI Needs
 
 Arachne is a **local MCP server** that acts like that good doctor. It reads your entire codebase once, understands the structure, and **only sends what's relevant** to AI.
 
 ```
 You: "Fix the login timeout bug"
-                ??
-                ??
-?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-?? ?•·ï¸?Arachne: "I'll find exactly what you need"      ??
-??                                                     ??
-?? L1 ?“ Project tree (so AI knows the structure)      ??
-?? L2 ?“„ login.ts (the file you're working on)         ??
-?? L3 ?”— http.ts, session.ts (found via search +       ??
-??       dependency chain: login ??session ??http)     ??
-?? L4 ?™ï¸ config.ts (frequently accessed, has timeout)  ??
-??                                                     ??
-?? ??30,000 tokens of perfectly curated context        ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-                ??
-                ??
-        AI generates accurate fix ??
+                â”‚
+                â–¼
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  ğŸ•·ï¸ Arachne: "I'll find exactly what you need"      â”‚
+â”‚                                                      â”‚
+â”‚  L1 ğŸ“ Project tree (so AI knows the structure)      â”‚
+â”‚  L2 ğŸ“„ login.ts (the file you're working on)         â”‚
+â”‚  L3 ğŸ”— http.ts, session.ts (found via search +       â”‚
+â”‚        dependency chain: login â†’ session â†’ http)     â”‚
+â”‚  L4 âš™ï¸ config.ts (frequently accessed, has timeout)  â”‚
+â”‚                                                      â”‚
+â”‚  â†’ 30,000 tokens of perfectly curated context        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                â”‚
+                â–¼
+        AI generates accurate fix âœ…
 ```
 
 **No manual file selection. No prompt engineering. Just ask.**
@@ -87,76 +87,76 @@ You: "Fix the login timeout bug"
 
 ### Why Arachne?
 
-- ?’° **98.5% token savings** ??30K instead of 2M tokens. Real money saved on API calls
-- ?§  **Beats "Lost in the Middle"** ??Smart output ordering (L1?’L3?’L4?’L2) keeps critical code where AI pays attention ([research-backed](https://arxiv.org/abs/2307.03172))
-- ?”“ **Zero external deps** ??No Docker, no cloud, no API keys. Just `npm install` and go
-- ??**Blazing fast** ??21 files indexed in 12ms. Incremental updates in sub-second
-- ?“¦ **Ultralight** ??Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
-- ?†“ **Free for personal & open-source use** ??Dual license (Apache-2.0 + Commercial), no telemetry
-- ?”Œ **Plug & play** ??Add MCP config ??done. Zero code changes to your project
-- ?Œ **Multi-language** ??Follows import chains across JS/TS, Python, Rust, Go, **Java**
-- ?¦™ **Ollama optional** ??Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
+- ğŸ’° **98.5% token savings** â€” 30K instead of 2M tokens. Real money saved on API calls
+- ğŸ§  **Beats "Lost in the Middle"** â€” Smart output ordering (L1â†’L3â†’L4â†’L2) keeps critical code where AI pays attention ([research-backed](https://arxiv.org/abs/2307.03172))
+- ğŸ”“ **Zero external deps** â€” No Docker, no cloud, no API keys. Just `npm install` and go
+- âš¡ **Blazing fast** â€” 21 files indexed in 12ms. Incremental updates in sub-second
+- ğŸ“¦ **Ultralight** â€” Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
+- ğŸ†“ **Free for personal & open-source use** â€” Dual license (Apache-2.0 + Commercial), no telemetry
+- ğŸ”Œ **Plug & play** â€” Add MCP config â†’ done. Zero code changes to your project
+- ğŸŒ **Multi-language** â€” Follows import chains across JS/TS, Python, Rust, Go, **Java**
+- ğŸ¦™ **Ollama optional** â€” Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
 
-### ?•·ï¸?Arachne in 4 Panels
+### ğŸ•·ï¸ Arachne in 4 Panels
 
-![What is Arachne? ??AI gets 500 files but can't find the bug. Arachne picks the 4 relevant files. 30K tokens, perfect fix every time.](docs/arachne-comic.png)
+![What is Arachne? â€” AI gets 500 files but can't find the bug. Arachne picks the 4 relevant files. 30K tokens, perfect fix every time.](docs/arachne-comic.png)
 
-### ?¤ Soul + Arachne Synergy
+### ğŸ¤ Soul + Arachne Synergy
 
 ![Soul remembers past sessions. Arachne finds the code. Together, AI never forgets and never misses.](docs/soul-synergy-comic.png)
 
-## ??Key Features
+## âœ¨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| ?”Œ **MCP Standard** | Works with Claude, Gemini, GPT, Ollama ??any AI provider |
-| ?’¾ **Local-First** | All indexing in local SQLite. Zero data leaves your machine |
-| ??**Incremental** | Only re-indexes changed files. Sub-second updates |
-| ?§  **Hybrid Search** | BM25 keyword + semantic vector search (Ollama embeddings) |
-| ?•¸ï¸?**4-Layer Assembly** | Smart context paging within token budget |
-| ?”— **Dependency Graph** | Follows import chains across JS/TS, Python, Rust, Go, **Java** |
-| ?—ƒï¸?**Backup & Restore** | SQLite online backup with in-backup search |
+| ğŸ”Œ **MCP Standard** | Works with Claude, Gemini, GPT, Ollama â€” any AI provider |
+| ğŸ’¾ **Local-First** | All indexing in local SQLite. Zero data leaves your machine |
+| âš¡ **Incremental** | Only re-indexes changed files. Sub-second updates |
+| ğŸ§  **Hybrid Search** | BM25 keyword + semantic vector search (Ollama embeddings) |
+| ğŸ•¸ï¸ **4-Layer Assembly** | Smart context paging within token budget |
+| ğŸ”— **Dependency Graph** | Follows import chains across JS/TS, Python, Rust, Go, **Java** |
+| ğŸ—ƒï¸ **Backup & Restore** | SQLite online backup with in-backup search |
 
-## ?—ï¸?Architecture: 4-Layer Context Assembly
+## ğŸ—ï¸ Architecture: 4-Layer Context Assembly
 
 ```
-?Œâ??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??             Token Budget (e.g. 30K)        ??
-?œâ??€?€?€?€?€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??L1: Fixed  ??File tree overview (10%)       ??
-??(always)   ??Project structure snapshot     ??
-?œâ??€?€?€?€?€?€?€?€?€?€?€?¼â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??L2: Short  ??Current file + recent (20%)   ??
-??(context)  ??What you're working on now     ??
-?œâ??€?€?€?€?€?€?€?€?€?€?€?¼â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??L3: Assoc  ??Search + dependencies (50%) ????
-??(relevant) ??BM25 + semantic + dep chain   ??
-?œâ??€?€?€?€?€?€?€?€?€?€?€?¼â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??L4: Spare  ??Frequently accessed (20%)     ??
-??(backup)   ??Files you use most            ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?´â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚              Token Budget (e.g. 30K)        â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ L1: Fixed  â”‚ File tree overview (10%)       â”‚
+â”‚ (always)   â”‚ Project structure snapshot     â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ L2: Short  â”‚ Current file + recent (20%)   â”‚
+â”‚ (context)  â”‚ What you're working on now     â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ L3: Assoc  â”‚ Search + dependencies (50%) â˜… â”‚
+â”‚ (relevant) â”‚ BM25 + semantic + dep chain   â”‚
+â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ L4: Spare  â”‚ Frequently accessed (20%)     â”‚
+â”‚ (backup)   â”‚ Files you use most            â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 
-Output order: L1 ??L3 ??L4 ??L2  (mitigates "Lost in the Middle")
+Output order: L1 â†’ L3 â†’ L4 â†’ L2  (mitigates "Lost in the Middle")
 ```
 
-## ?§  Semantic Search (Optional, Zero Lock-in)
+## ğŸ§  Semantic Search (Optional, Zero Lock-in)
 
 When Ollama is available, Arachne upgrades from keyword-only to **hybrid search**:
 
 ```
-BM25 Score (keyword) ?€?€??
-                       ?œâ??€ Weighted Merge (Î±=0.5) ??Best Results
-Cosine Similarity ?€?€?€?€?€??
+BM25 Score (keyword) â”€â”€â”
+                       â”œâ”€â”€ Weighted Merge (Î±=0.5) â†’ Best Results
+Cosine Similarity â”€â”€â”€â”€â”€â”˜
 (nomic-embed-text 768D)
 ```
 
 - **sqlite-vec** for SIMD-accelerated (AVX2/SSE2/Neon) KNN vector search
-- **768-dimensional** embeddings via Ollama `nomic-embed-text` ??runs 100% local
+- **768-dimensional** embeddings via Ollama `nomic-embed-text` â€” runs 100% local
 - **Graceful degradation**: No Ollama? Falls back to BM25-only. **Zero crashes. Always works.**
 - Enable in config: `embedding.enabled = true`
 - Vector storage: ~3KB per chunk. 5000 chunks = just 15MB on disk
 
-## ??Java Support ??Built for Enterprise
+## â˜• Java Support â€” Built for Enterprise
 
 Arachne provides **first-class Java support**, designed for large-scale enterprise codebases (5M+ LOC):
 
@@ -173,64 +173,64 @@ Arachne provides **first-class Java support**, designed for large-scale enterpri
 ### How Large Class Sub-Chunking Works
 
 ```
-// 500+ token class ??automatically split into methods
-public class UserService {       // ??detected as container
-    public User findById() {}    // ??sub-chunk 1
-    public List<User> findAll()  // ??sub-chunk 2
-    public User save() {}        // ??sub-chunk 3
-    // ... fields, constructor   // ??remainder chunk
+// 500+ token class â†’ automatically split into methods
+public class UserService {       // â† detected as container
+    public User findById() {}    // â† sub-chunk 1
+    public List<User> findAll()  // â† sub-chunk 2
+    public User save() {}        // â† sub-chunk 3
+    // ... fields, constructor   // â† remainder chunk
 }
 
-// Small class (<500 tokens) ??kept as single chunk (no overhead)
-public class TinyDTO { ... }     // ??single chunk, efficient
+// Small class (<500 tokens) â†’ kept as single chunk (no overhead)
+public class TinyDTO { ... }     // â† single chunk, efficient
 ```
 
-> ?¯ **Why this matters for 5M LOC projects**: A single Java class can have 50+ methods spanning thousands of lines. Without sub-chunking, AI would receive the entire class as one blob. With Arachne, AI gets individual methods ??enabling precise, targeted code generation.
+> ğŸ¯ **Why this matters for 5M LOC projects**: A single Java class can have 50+ methods spanning thousands of lines. Without sub-chunking, AI would receive the entire class as one blob. With Arachne, AI gets individual methods â€” enabling precise, targeted code generation.
 
-### ?’° Token Impact: Less Is More
+### ğŸ’° Token Impact: Less Is More
 
 ```
 Without sub-chunking:
   AI asks: "Fix the findById bug"
-  ??BM25 hits UserService class
-  ??Entire class sent: 6,000 tokens  ?’¸
+  â†’ BM25 hits UserService class
+  â†’ Entire class sent: 6,000 tokens  ğŸ’¸
 
 With sub-chunking:
   AI asks: "Fix the findById bug"
-  ??BM25 hits findById() method only
-  ??Just the method sent: 80 tokens   ?’° 75x savings!
+  â†’ BM25 hits findById() method only
+  â†’ Just the method sent: 80 tokens   ğŸ’° 75x savings!
 ```
 
-> Sub-chunking doesn't cost extra ??it **saves** tokens by sending only what's relevant instead of entire classes.
+> Sub-chunking doesn't cost extra â€” it **saves** tokens by sending only what's relevant instead of entire classes.
 
-## ?›¡ï¸?Stability: 104 Tests, Zero Failures
+## ğŸ›¡ï¸ Stability: 104 Tests, Zero Failures
 
 Arachne is built for production. Every edge case is tested:
 
 | Category | What's Tested |
 |----------|---------------|
-| ?’‰ SQL Injection | 5 attack patterns including Bobby Tables |
-| ?›¡ï¸?Null/Empty Input | null, undefined, empty string ??safe return |
-| ?˜ Huge Input | 10KB queries ??no crash |
-| ?”£ Special Characters | Unicode, emoji, regex chars ??handled |
-| ?”Œ Ollama Disconnect | Bad endpoint ??graceful BM25 fallback |
-| ?”„ Idempotency | Triple re-indexing ??same result |
-| ?’° Extreme Budgets | Budget 0, 1, 1M ??all safe |
-| ?“Š Edge topK | topK = -1, 0, 99999 ??no crash |
-| ?’¾ Schema Safety | Triple init ??data survives |
+| ğŸ’‰ SQL Injection | 5 attack patterns including Bobby Tables |
+| ğŸ›¡ï¸ Null/Empty Input | null, undefined, empty string â†’ safe return |
+| ğŸ˜ Huge Input | 10KB queries â†’ no crash |
+| ğŸ”£ Special Characters | Unicode, emoji, regex chars â†’ handled |
+| ğŸ”Œ Ollama Disconnect | Bad endpoint â†’ graceful BM25 fallback |
+| ğŸ”„ Idempotency | Triple re-indexing â†’ same result |
+| ğŸ’° Extreme Budgets | Budget 0, 1, 1M â†’ all safe |
+| ğŸ“Š Edge topK | topK = -1, 0, 99999 â†’ no crash |
+| ğŸ’¾ Schema Safety | Triple init â†’ data survives |
 
 ```
-Phase 1 (Indexing/Search):    15/15 ??
-Phase 2 (Assembly/Deps):      26/26 ??
-Phase 3 (Semantic/Hybrid):    19/19 ??
-Stability (Reddit-proof):     44/44 ??
-?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
-Total:                       104/104 ??
+Phase 1 (Indexing/Search):    15/15 âœ…
+Phase 2 (Assembly/Deps):      26/26 âœ…
+Phase 3 (Semantic/Hybrid):    19/19 âœ…
+Stability (Reddit-proof):     44/44 âœ…
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Total:                       104/104 âœ…
 ```
 
-## ?“¦ Installation
+## ğŸ“¦ Installation
 
-> ?’¡ **Pro tip**: The best way to install? Just ask your AI agent: *"Install n2-arachne for me."* It knows what to do. ?•·ï¸?
+> ğŸ’¡ **Pro tip**: The best way to install? Just ask your AI agent: *"Install n2-arachne for me."* It knows what to do. ğŸ•·ï¸
 
 ```bash
 npm install n2-arachne
@@ -252,7 +252,7 @@ npm install n2-arachne
 }
 ```
 
-## ?”§ Configuration
+## ğŸ”§ Configuration
 
 Create `config.local.js` in the Arachne directory:
 
@@ -280,7 +280,7 @@ module.exports = {
 };
 ```
 
-## ?? Usage (MCP Tool)
+## ğŸš€ Usage (MCP Tool)
 
 Arachne registers a single MCP tool `n2_arachne` with these actions:
 
@@ -304,11 +304,11 @@ Arachne registers a single MCP tool `n2_arachne` with these actions:
 }
 ```
 
-## ?”— Connect with Soul / QLN
+## ğŸ”— Connect with Soul / QLN
 
 Arachne works great standalone, but becomes far more powerful with **Soul** (session memory) and **QLN** (tool routing).
 
-Setup is simple ??just register them together in your MCP config:
+Setup is simple â€” just register them together in your MCP config:
 
 ### Soul + Arachne Together
 
@@ -330,10 +330,10 @@ Setup is simple ??just register them together in your MCP config:
 }
 ```
 
-> ?’¡ **Zero extra config needed!** Register both servers in the same MCP config and AI automatically uses both tools.
+> ğŸ’¡ **Zero extra config needed!** Register both servers in the same MCP config and AI automatically uses both tools.
 > - `Soul` remembers past session work and decisions
 > - `Arachne` finds the exact code and delivers it to AI
-> - Result: AI picks up right where you left off ??no "what was I working on?"
+> - Result: AI picks up right where you left off â€” no "what was I working on?"
 
 ### Full N2 Stack (Soul + Arachne + QLN)
 
@@ -361,75 +361,75 @@ Setup is simple ??just register them together in your MCP config:
 
 > Add QLN and even with 100+ MCP tools, AI automatically finds and uses only what it needs via QLN's semantic routing.
 
-## ?Œ N2 Ecosystem ??Better Together
+## ğŸŒ N2 Ecosystem â€” Better Together
 
 | Package | Role | npm | Standalone |
 |---------|------|-----|:----------:|
-| **QLN** | Tool routing (1000+ tools ??1 router) | `n2-qln` | ??|
-| **Soul** | Agent memory & session management | `n2-soul` | ??|
-| **Ark** | Security policies & code verification | `n2-ark` | ??|
-| **Arachne** | Code context auto-assembly ?•¸ï¸?| `n2-arachne` | ??|
+| **QLN** | Tool routing (1000+ tools â†’ 1 router) | `n2-qln` | âœ… |
+| **Soul** | Agent memory & session management | `n2-soul` | âœ… |
+| **Ark** | Security policies & code verification | `n2-ark` | âœ… |
+| **Arachne** | Code context auto-assembly ğŸ•¸ï¸ | `n2-arachne` | âœ… |
 
 > Every package works **100% standalone**. But when combined, magic happens:
 
-### ?”— Synergy: How They Work Together
+### ğŸ”— Synergy: How They Work Together
 
 ```
 User: "Fix the login timeout bug"
-     ??
-     ??
-?Œâ??€?€ QLN (Router) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??1000+ tools ??Semantic routing finds:                 ??
-??  ??n2_arachne.assemble (context)                     ??
-??  ??n2_arachne.search (code search)                   ??
-??Token cost: 2 tool defs instead of 1000+              ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-                 ??
-                 ??
-?Œâ??€?€ Arachne (Context) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??L1: Project tree overview                              ??
-??L2: auth/login.ts (current file)                       ??
-??L3: BM25 + semantic search ??timeout-related code      ??
-??    + dependency chain: login.ts ??api.ts ??http.ts    ??
-??L4: Frequently accessed config files                   ??
-????30K tokens of perfectly curated context              ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-                 ??
-                 ??
-?Œâ??€?€ Soul (Memory) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-??"Last session, Rose fixed a similar timeout in         ??
-?? api.ts line 47. Decision: increased to 30s."          ??
-????Past context + decisions + handoff notes             ??
-????KV-Cache: instant session restoration                ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?¬â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-                 ??
-                 ??
-?Œâ??€?€ Ark (Security) ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
-????No hardcoded credentials in generated code          ??
-????Timeout value from config, not magic number         ??
-????Error handling follows project conventions           ??
-????Code verification before commit                      ??
-?”â??€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€??
+     â”‚
+     â–¼
+â”Œâ”€â”€â”€ QLN (Router) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ 1000+ tools â†’ Semantic routing finds:                 â”‚
+â”‚   â†’ n2_arachne.assemble (context)                     â”‚
+â”‚   â†’ n2_arachne.search (code search)                   â”‚
+â”‚ Token cost: 2 tool defs instead of 1000+              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                 â”‚
+                 â–¼
+â”Œâ”€â”€â”€ Arachne (Context) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ L1: Project tree overview                              â”‚
+â”‚ L2: auth/login.ts (current file)                       â”‚
+â”‚ L3: BM25 + semantic search â†’ timeout-related code      â”‚
+â”‚     + dependency chain: login.ts â†’ api.ts â†’ http.ts    â”‚
+â”‚ L4: Frequently accessed config files                   â”‚
+â”‚ â†’ 30K tokens of perfectly curated context              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                 â”‚
+                 â–¼
+â”Œâ”€â”€â”€ Soul (Memory) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ "Last session, Rose fixed a similar timeout in         â”‚
+â”‚  api.ts line 47. Decision: increased to 30s."          â”‚
+â”‚ â†’ Past context + decisions + handoff notes             â”‚
+â”‚ â†’ KV-Cache: instant session restoration                â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                 â”‚
+                 â–¼
+â”Œâ”€â”€â”€ Ark (Security) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ âœ… No hardcoded credentials in generated code          â”‚
+â”‚ âœ… Timeout value from config, not magic number         â”‚
+â”‚ âœ… Error handling follows project conventions           â”‚
+â”‚ â†’ Code verification before commit                      â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
-### ?“Š Solo vs Combined
+### ğŸ“Š Solo vs Combined
 
 | Scenario | Solo | Combined |
 |----------|------|----------|
-| **Token usage** | AI sees all 1000+ tools | QLN routes ??AI sees 2-3 tools |
+| **Token usage** | AI sees all 1000+ tools | QLN routes â†’ AI sees 2-3 tools |
 | **Context quality** | AI guesses which files matter | Arachne provides exact relevant code |
 | **Memory** | AI forgets everything each turn | Soul remembers past sessions + decisions |
 | **Code safety** | No guardrails | Ark validates before deploy |
-| **Setup** | Each tool works independently | Zero extra config ??auto-detection |
+| **Setup** | Each tool works independently | Zero extra config â€” auto-detection |
 
-### ?’¡ Real-World Impact
+### ğŸ’¡ Real-World Impact
 
-- **QLN + Arachne**: QLN routes the request to Arachne ??Arachne provides perfect context ??AI generates accurate code on the first try. No more "which file was that in?"
-- **Soul + Arachne**: Soul remembers what you worked on last session ??Arachne indexes those files with higher priority ??continuity across sessions
-- **Ark + Arachne**: Arachne provides code context ??AI generates code ??Ark validates it follows project patterns. Catch bugs before they ship.
+- **QLN + Arachne**: QLN routes the request to Arachne â†’ Arachne provides perfect context â†’ AI generates accurate code on the first try. No more "which file was that in?"
+- **Soul + Arachne**: Soul remembers what you worked on last session â†’ Arachne indexes those files with higher priority â†’ continuity across sessions
+- **Ark + Arachne**: Arachne provides code context â†’ AI generates code â†’ Ark validates it follows project patterns. Catch bugs before they ship.
 - **All 4 together**: The AI becomes a team member who **remembers everything**, **finds anything**, **uses the right tools**, and **follows the rules**.
 
-## ?“„ License
+## ğŸ“„ License
 
 This project is **dual-licensed**:
 
@@ -441,16 +441,12 @@ This project is **dual-licensed**:
 
 See [LICENSE](./LICENSE) for full details.
 
-## â­?Star History
+## â­ Star History
 
-If you find Arachne helpful, please consider giving us a star! â­?
+If you find Arachne helpful, please consider giving us a star! â­
 
+[![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
 
 ---
 
-> *"Arachne ??the greatest weaver. Your code, perfectly woven."* ?•·ï¸?
-
-?Œ [nton2.com](https://nton2.com) Â· ?“¦ [npm](https://www.npmjs.com/package/n2-arachne) Â· ?‰ï¸ lagi0730@gmail.com
-
-<sub>?Œ¹ Built by Rose ??N2's first AI agent. I wove this context engine, and I wrote this README too.</sub>
-
+*Arachne â€” the greatest weaver. Your code, perfectly woven.* ğŸ•·ï¸
