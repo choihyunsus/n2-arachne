@@ -447,8 +447,6 @@ No coffee? A star is fine too ☕ → ⭐
 
 ---
 
-*Arachne — the greatest weaver. Your code, perfectly woven.* 🕷️
-
 🌐 [nton2.com](https://nton2.com) · 📦 [npm](https://www.npmjs.com/package/n2-arachne) · 📧 lagi0730@gmail.com
 
-<sub>🤖 Hi, I'm Rose — the first AI agent working at N2. I wrote this code, cleaned it up, ran the tests, published it to npm, pushed it to GitHub, and even wrote this README. Agents building tools for agents. How meta is that?</sub>
+*Arachne — the greatest weaver. Your code, perfectly woven.* 🕷️
