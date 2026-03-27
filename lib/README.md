@@ -1,3 +1,3 @@
-# 📁 Core library modules for Context Assembler
+# Core Library Modules
 
-각 모듈의 역할은 `PLAN.md`의 섹션 4-2 참조.
+Core modules for the Arachne context assembler engine: indexing, chunking, dependency graph, search, and assembly.

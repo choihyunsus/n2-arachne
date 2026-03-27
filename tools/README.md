@@ -1,3 +1,3 @@
-# 📁 MCP tool definitions for Context Assembler
+# MCP Tool Definitions
 
-MCP 도구 정의와 액션 핸들러. API 표면은 `PLAN.md`의 섹션 6 참조.
+MCP tool definitions and action handlers for the Arachne context assembler (search, assemble, index, status, files, backup).
