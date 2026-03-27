@@ -92,7 +92,7 @@ You: "Fix the login timeout bug"
 - **Zero external deps** — No Docker, no cloud, no API keys. Just `npm install` and go
 - **Blazing fast** — 21 files indexed in 12ms. Incremental updates in sub-second
 - **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
-- 🆓 **Free for personal & open-source use** — Dual license (Apache-2.0 + Commercial), no telemetry
+- **Free for personal & open-source use** — Dual license (Apache-2.0 + Commercial), no telemetry
 - **Plug & play** — Add MCP config → done. Zero code changes to your project
 - **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go, **Java**
 - **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
@@ -220,12 +220,12 @@ Arachne is built for production. Every edge case is tested:
 | Schema Safety | Triple init → data survives |
 
 ```
-Phase 1 (Indexing/Search): 15/15 
-Phase 2 (Assembly/Deps): 26/26 
-Phase 3 (Semantic/Hybrid): 19/19 
-Stability (Reddit-proof): 44/44 
+Phase 1 (Indexing/Search):    15/15  PASS
+Phase 2 (Assembly/Deps):      26/26  PASS
+Phase 3 (Semantic/Hybrid):    19/19  PASS
+Stability (Reddit-proof):     44/44  PASS
 ─────────────────────────────────────
-Total: 104/104 
+Total:                       104/104  ALL PASS
 ```
 
 ## Installation
@@ -365,10 +365,10 @@ Setup is simple — just register them together in your MCP config:
 
 | Package | Role | npm | Standalone |
 |---------|------|-----|:----------:|
-| **QLN** | Tool routing (1000+ tools → 1 router) | `n2-qln` | |
-| **Soul** | Agent memory & session management | `n2-soul` | |
-| **Ark** | Security policies & code verification | `n2-ark` | |
-| **Arachne** | Code context auto-assembly | `n2-arachne` | |
+| **QLN** | Tool routing (1000+ tools → 1 router) | `n2-qln` | Yes |
+| **Soul** | Agent memory & session management | `n2-soul` | Yes |
+| **Ark** | Security policies & code verification | `n2-ark` | Yes |
+| **Arachne** | Code context auto-assembly | `n2-arachne` | Yes |
 
 > Every package works **100% standalone**. But when combined, magic happens:
 
@@ -443,10 +443,10 @@ See [LICENSE](./LICENSE) for full details.
 
 ## Star History
 
-No coffee? A star is fine too → 
+If Arachne helped you, a star would be appreciated.
 
 ---
 
- [nton2.com](https://nton2.com) · [npm](https://www.npmjs.com/package/n2-arachne) · lagi0730@gmail.com
+[nton2.com](https://nton2.com) · [npm](https://www.npmjs.com/package/n2-arachne) · lagi0730@gmail.com
 
 *Arachne — the greatest weaver. Your code, perfectly woven.* 
