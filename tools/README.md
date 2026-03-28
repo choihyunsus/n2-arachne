@@ -1,3 +1,4 @@
-# MCP Tool Definitions
+# tools/ (Deprecated)
 
-MCP tool definitions and action handlers for the Arachne context assembler (search, assemble, index, status, files, backup).
+Source code migrated to `src/tools/` (TypeScript) in v4.0.0.
+Build output at `dist/tools/`.

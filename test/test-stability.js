@@ -1,14 +1,14 @@
-// test-stability.js — Arachne 안정성 테스트 (레딧 배포 대비)
-// 엣지 케이스, SQL 인젝션, 에러 복구, 입력 검증 철저 검증
+// test-stability.js — Arachne stability test (Reddit-proof)
+// Edge cases, SQL injection, error recovery, input validation
 const path = require('path');
 const fs = require('fs');
-const { loadConfig } = require('../lib/config');
-const { Store } = require('../lib/store');
-const { Indexer } = require('../lib/indexer');
-const { BM25Search } = require('../lib/search');
-const { Embedding } = require('../lib/embedding');
-const { VectorStore } = require('../lib/vector-store');
-const { Assembler } = require('../lib/assembler');
+const { loadConfig } = require('../dist/lib/config');
+const { Store } = require('../dist/lib/store');
+const { Indexer } = require('../dist/lib/indexer');
+const { BM25Search } = require('../dist/lib/search');
+const { Embedding } = require('../dist/lib/embedding');
+const { VectorStore } = require('../dist/lib/vector-store');
+const { Assembler } = require('../dist/lib/assembler');
 
 const TEST_PROJECT = path.resolve(__dirname, '../../QLN');
 const TEST_DATA_DIR = path.resolve(__dirname, '../data');
