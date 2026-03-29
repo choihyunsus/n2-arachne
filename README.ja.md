@@ -196,7 +196,7 @@ npm install n2-arachne
   "mcpServers": {
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
@@ -274,7 +274,7 @@ Arachneは単体でも十分に機能しますが、**Soul** (セッションメ
     },
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
@@ -299,7 +299,7 @@ Arachneは単体でも十分に機能しますが、**Soul** (セッションメ
     },
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }

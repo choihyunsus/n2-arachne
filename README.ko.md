@@ -241,7 +241,7 @@ npm install n2-arachne
   "mcpServers": {
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
@@ -319,7 +319,7 @@ Arachne는 독립 실행도 되지만, **Soul**(세션 기억)이나 **QLN**(도
     },
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
@@ -344,7 +344,7 @@ Arachne는 독립 실행도 되지만, **Soul**(세션 기억)이나 **QLN**(도
     },
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }

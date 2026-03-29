@@ -293,7 +293,7 @@ npm install n2-arachne
   "mcpServers": {
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
@@ -371,7 +371,7 @@ Setup is simple — just register them together in your MCP config:
     },
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
@@ -396,7 +396,7 @@ Setup is simple — just register them together in your MCP config:
     },
     "n2-arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/index.js"],
+      "args": ["/path/to/n2-arachne/dist/index.js"],
       "env": {
         "ARACHNE_PROJECT_DIR": "/path/to/your/project"
       }
