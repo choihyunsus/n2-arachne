@@ -1,11 +1,11 @@
-// test-indexer.js — Context Assembler Phase 1 통합 테스트
-// QLN 프로젝트를 대상으로 인덱싱 + 검색 테스트
+// test-indexer.js — Context Assembler Phase 1 integration test
+// Tests indexing + search against QLN project
 const path = require('path');
-const { loadConfig } = require('../lib/config');
-const { Store } = require('../lib/store');
-const { Indexer } = require('../lib/indexer');
-const { BM25Search } = require('../lib/search');
-const { Backup } = require('../lib/backup');
+const { loadConfig } = require('../dist/lib/config');
+const { Store } = require('../dist/lib/store');
+const { Indexer } = require('../dist/lib/indexer');
+const { BM25Search } = require('../dist/lib/search');
+const { Backup } = require('../dist/lib/backup');
 
 const TEST_PROJECT = path.resolve(__dirname, '../../QLN');
 const TEST_DATA_DIR = path.resolve(__dirname, '../data');

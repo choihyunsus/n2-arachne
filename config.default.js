@@ -72,6 +72,14 @@ module.exports = {
         externalBackupDir: null,
     },
 
+    // KV-Cache settings (Phase 2 — session memory)
+    kvCache: {
+        enabled: true,
+        maxSearchHistory: 100,  // Max search queries to remember
+        maxHotFiles: 30,        // Top N frequently accessed files
+        autoSaveOnExit: true,   // Auto-save on process exit
+    },
+
     // Integration settings
     integrations: {
         soul: { enabled: true, dataDir: null },

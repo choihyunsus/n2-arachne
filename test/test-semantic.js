@@ -1,13 +1,13 @@
-// test-semantic.js — Arachne Phase 3 시맨틱 검색 테스트
-// Ollama 연결 가능 시 시맨틱, 불가 시 graceful degradation 테스트
+// test-semantic.js — Arachne Phase 3 semantic search test
+// Tests Ollama connection + graceful degradation
 const path = require('path');
-const { loadConfig } = require('../lib/config');
-const { Store } = require('../lib/store');
-const { Indexer } = require('../lib/indexer');
-const { BM25Search } = require('../lib/search');
-const { Embedding } = require('../lib/embedding');
-const { VectorStore } = require('../lib/vector-store');
-const { Assembler } = require('../lib/assembler');
+const { loadConfig } = require('../dist/lib/config');
+const { Store } = require('../dist/lib/store');
+const { Indexer } = require('../dist/lib/indexer');
+const { BM25Search } = require('../dist/lib/search');
+const { Embedding } = require('../dist/lib/embedding');
+const { VectorStore } = require('../dist/lib/vector-store');
+const { Assembler } = require('../dist/lib/assembler');
 
 const TEST_PROJECT = path.resolve(__dirname, '../../QLN');
 const TEST_DATA_DIR = path.resolve(__dirname, '../data');

@@ -1,12 +1,12 @@
-// test-assembler.js — Arachne Phase 2 통합 테스트
-// 의존성 그래프 + 4-Layer 어셈블러 테스트
+// test-assembler.js — Arachne Phase 2 integration test
+// Dependency graph + 4-Layer assembler tests
 const path = require('path');
-const { loadConfig } = require('../lib/config');
-const { Store } = require('../lib/store');
-const { Indexer } = require('../lib/indexer');
-const { BM25Search } = require('../lib/search');
-const { Assembler, estimateTokens } = require('../lib/assembler');
-const { extractDependencies, resolveImport } = require('../lib/dependency');
+const { loadConfig } = require('../dist/lib/config');
+const { Store } = require('../dist/lib/store');
+const { Indexer } = require('../dist/lib/indexer');
+const { BM25Search } = require('../dist/lib/search');
+const { Assembler, estimateTokens } = require('../dist/lib/assembler');
+const { extractDependencies, resolveImport } = require('../dist/lib/dependency');
 
 const TEST_PROJECT = path.resolve(__dirname, '../../QLN');
 const TEST_DATA_DIR = path.resolve(__dirname, '../data');

@@ -1,6 +1,7 @@
 test/
 data/
 docs/
+src/
 PLAN.md
 *.db
 *.db-journal
@@ -9,6 +10,11 @@ PLAN.md
 config.local.js
 .git/
 .gitignore
+.npmignore
+tsconfig.json
 task.md
 walkthrough.md
 implementation_plan.md
+lib/
+tools/
+native/target/
