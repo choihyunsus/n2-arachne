@@ -113,9 +113,9 @@ You: "Fix the login timeout bug"
 -  **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go, **Java**
 -  **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
 
-### ️ Arachne in 4 Panels
+### Arachne in 4 Panels — Titanium Edition
 
-![What is Arachne? — AI gets 500 files but can't find the bug. Arachne picks the 4 relevant files. 30K tokens, perfect fix every time.](docs/arachne-comic.png)
+![Arachne V4.0 Titanium — AI drowning in 500 files, Titanium Spider arrives, scans 1GB in 0.54s, delivers 4 perfect files. 30K tokens, done.](docs/arachne-titanium-comic.png)
 
 ###  Soul + Arachne Synergy
 
