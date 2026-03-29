@@ -8,7 +8,7 @@
 **[한국어](README.ko.md)** | English | **[日本語](README.ja.md)**
 
 ---
-🔥 **ARACHNE V4.0.0 TITANIUM EDITION** 🔥
+ **ARACHNE V4.0.0 TITANIUM EDITION** 
 > **1GB (1,000,000,000 Bytes) Codebase Search in 0.54 Seconds.**
 > _Powered by Zero-Marshaling Architecture. 0 Bytes JS Heap Bloat. No OOM Crashes._
 ---
