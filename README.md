@@ -108,7 +108,7 @@ You: "Fix the login timeout bug"
 -  **Zero external deps** — No Docker, no cloud, no API keys. Just `npm install` and go
 -  **Blazing fast** — 21 files indexed in 12ms. Incremental updates in sub-second
 -  **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
-- 🆓 **100% free & open source** — Apache-2.0, no hidden costs, no telemetry
+- **Free for personal/OSS** — Apache-2.0 for individuals and open-source projects. No telemetry
 -  **Plug & play** — Add MCP config → done. Zero code changes to your project
 -  **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go, **Java**
 -  **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search

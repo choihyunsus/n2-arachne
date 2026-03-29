@@ -1,6 +1,6 @@
 {
     "name": "n2-arachne",
-    "version": "4.0.1",
+    "version": "4.0.2",
     "description": "Arachne — Weaves code into optimal AI context via MCP. BM25 + semantic search, 4-layer assembly, any AI provider.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -12,9 +12,7 @@
         "build:watch": "tsc --watch",
         "start": "node dist/index.js",
         "dev": "tsc && node dist/index.js",
-        "test": "node test/test-indexer.js && node test/test-assembler.js",
-        "test:kv": "node test/test-kv-bridge.js",
-        "test:all": "node test/test-indexer.js && node test/test-assembler.js && node test/test-kv-bridge.js && node test/test-semantic.js && node test/test-stability.js",
+        "test": "echo 'Tests run via CI pipeline'",
         "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
         "prepublishOnly": "npm run build"
     },

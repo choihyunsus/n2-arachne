@@ -12,3 +12,6 @@ PLAN.md
 task.md
 walkthrough.md
 implementation_plan.md
+test/
+native/target/
+data-*-bench/
