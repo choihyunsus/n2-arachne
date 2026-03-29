@@ -5,7 +5,8 @@ import type { ArachneConfig } from '../types';
 
 /**
  * Deep merge — config.local.js overrides config.default.js
- * Arrays are replaced, objects are recursively merged
+ * Arrays are replaced, objects are recursively merged.
+ * Note: as-casts are structurally required for generic deep merge.
  */
 export function deepMerge(target: ArachneConfig, source: Partial<ArachneConfig>): ArachneConfig {
   const result: Record<string, unknown> = { ...target };

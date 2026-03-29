@@ -1,0 +1,26 @@
+# Arachne native — Rust hot paths via napi-rs
+[package]
+name = "arachne-native"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "2", features = ["napi9"] }
+napi-derive = "2"
+rayon = "1.10"
+memmap2 = "0.9"
+unicode-segmentation = "1.12"
+memchr = "2.7"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
+strip = true

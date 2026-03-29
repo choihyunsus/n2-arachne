@@ -17,19 +17,9 @@ interface ToolResponse {
   isError?: boolean;
 }
 
-export function registerContextTools(
-  server: McpServer,
-  z: typeof ZodType,
-  search: BM25Search,
-  indexer: Indexer,
-  backup: Backup,
-  assembler: Assembler,
-  config: ArachneConfig,
-  vectorStore: VectorStore | null,
-  kvBridge?: KVBridge,
-): void {
-  // Schema defined outside server.tool() to avoid TS2589
-  const schema = {
+/** Build the unified tool schema */
+function buildToolSchema(z: typeof ZodType): Record<string, unknown> {
+  return {
     action: z.enum(['assemble', 'search', 'index', 'status', 'files', 'backup', 'restore', 'gc'])
       .describe('Action to execute (assemble: auto AI context assembly ★core)'),
     query: z.string().optional().describe('Search query (required for search action)'),
@@ -47,43 +37,53 @@ export function registerContextTools(
     budget: z.number().optional().describe('Token budget (default: 40000)'),
     layers: z.array(z.string()).optional().describe('Layers to use ["fixed", "shortTerm", "associative", "spare"]'),
   };
+}
+
+/** Route action to the appropriate handler */
+async function routeAction(
+  args: Record<string, unknown>,
+  search: BM25Search, indexer: Indexer, backup: Backup,
+  assembler: Assembler, config: ArachneConfig,
+  vectorStore: VectorStore | null, kvBridge?: KVBridge,
+): Promise<ToolResponse> {
+  const { action, query, topK, language, path: subPath, force,
+          label, backupId, searchBackups, maxAge, maxCount, pattern,
+          activeFile, budget, layers } = args as {
+    action: string; query?: string; topK?: number; language?: string;
+    path?: string; force?: boolean; label?: string; backupId?: string;
+    searchBackups?: boolean; maxAge?: number; maxCount?: number;
+    pattern?: string; activeFile?: string; budget?: number; layers?: string[];
+  };
+
+  switch (action) {
+    case 'assemble': return await handleAssemble(assembler, { query, activeFile, budget, layers }, config, kvBridge);
+    case 'search': return handleSearch(search, backup, { query, topK, language, searchBackups, backupId }, kvBridge);
+    case 'index': return await handleIndex(indexer, backup, config, { subPath, force });
+    case 'status': return handleStatus(indexer, backup, vectorStore);
+    case 'files': return handleFiles(indexer, { language, pattern });
+    case 'backup': return await handleBackup(backup, { label });
+    case 'restore': return await handleRestore(backup, { backupId });
+    case 'gc': return await handleGC(backup, { maxAge, maxCount });
+    default: return { content: [{ type: 'text' as const, text: `Unknown action: ${action}` }], isError: true };
+  }
+}
+
+export function registerContextTools(
+  server: McpServer, z: typeof ZodType,
+  search: BM25Search, indexer: Indexer, backup: Backup,
+  assembler: Assembler, config: ArachneConfig,
+  vectorStore: VectorStore | null, kvBridge?: KVBridge,
+): void {
+  const schema = buildToolSchema(z);
 
   // MCP SDK's overloaded server.tool() causes TS2589 with complex Zod schemas
-  // Runtime behavior is identical — only type checking is bypassed here
   (server.tool as Function)(
     'n2_arachne',
     'Arachne — Weaves code into optimal AI context. Supports search/indexing/assembly/backup.',
     schema,
     async (args: Record<string, unknown>) => {
-      const { action, query, topK, language, path: subPath, force,
-              label, backupId, searchBackups, maxAge, maxCount, pattern,
-              activeFile, budget, layers } = args as {
-        action: string; query?: string; topK?: number; language?: string;
-        path?: string; force?: boolean; label?: string; backupId?: string;
-        searchBackups?: boolean; maxAge?: number; maxCount?: number;
-        pattern?: string; activeFile?: string; budget?: number; layers?: string[];
-      };
       try {
-        switch (action) {
-          case 'assemble':
-            return await handleAssemble(assembler, { query, activeFile, budget, layers }, config, kvBridge);
-          case 'search':
-            return handleSearch(search, backup, { query, topK, language, searchBackups, backupId }, kvBridge);
-          case 'index':
-            return await handleIndex(indexer, backup, config, { subPath, force });
-          case 'status':
-            return handleStatus(indexer, backup, vectorStore);
-          case 'files':
-            return handleFiles(indexer, { language, pattern });
-          case 'backup':
-            return await handleBackup(backup, { label });
-          case 'restore':
-            return await handleRestore(backup, { backupId });
-          case 'gc':
-            return await handleGC(backup, { maxAge, maxCount });
-          default:
-            return { content: [{ type: 'text' as const, text: `Unknown action: ${action}` }], isError: true };
-        }
+        return await routeAction(args, search, indexer, backup, assembler, config, vectorStore, kvBridge);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         return { content: [{ type: 'text' as const, text: `Error: ${message}` }], isError: true };

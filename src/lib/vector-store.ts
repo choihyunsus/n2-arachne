@@ -92,7 +92,7 @@ export class VectorStore {
   }
 
   /**
-   * KNN vector search
+   * KNN vector search (sqlite-vec fallback)
    */
   async search(query: string, topK = 10): Promise<VectorSearchResult[]> {
     if (!this._initialized) return [];
@@ -113,6 +113,8 @@ export class VectorStore {
       distance: r.distance,
     }));
   }
+
+
 
   /**
    * Get count of embedded chunks

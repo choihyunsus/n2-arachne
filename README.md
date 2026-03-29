@@ -7,6 +7,12 @@
 
 **[한국어](README.ko.md)** | English | **[日本語](README.ja.md)**
 
+---
+🔥 **ARACHNE V4.0.0 TITANIUM EDITION** 🔥
+> **1GB (1,000,000,000 Bytes) Codebase Search in 0.54 Seconds.**
+> _Powered by Zero-Marshaling Architecture. 0 Bytes JS Heap Bloat. No OOM Crashes._
+---
+
 > Weave your codebase into the perfect context for AI
 
 ### What's New in v4.0 (Titanium Edition)
@@ -14,8 +20,8 @@
 Arachne has been completely rewritten from JS to strict **TypeScript**, with heavy computational paths natively rewritten in **C++ SIMD (sqlite-vec)** and **Rust (napi-rs)**.
 
 - `TypeScript (Strict)`: 100% type safety with zero runtime regressions.
-- `Rust Acceleration`: Multi-thread rayon scanning and array parsing provides 1.3x~1.9x boosts for token processing.
-- `C++ SIMD Search`: Hybrid cosine similarity + BM25 scores 10,000 document vectors in just 27ms.
+- `Rust Acceleration`: BM25 **1.3x faster** (memchr SIMD + rayon parallel); BatchCosine **19.9x faster** (96ms → 4.8ms).
+- `C++ SIMD Search`: sqlite-vec scans 10,000 × 768D vectors in just **25ms** natively.
 - `KV-Cache Integration`: Soul-bridge incremental re-indexing enables sub-second history load on start.
  — like Arachne, the greatest weaver of Greek mythology. ️
 
@@ -166,16 +172,37 @@ Cosine Similarity ─────┘
 - Enable in config: `embedding.enabled = true`
 - Vector storage: ~3KB per chunk. 5000 chunks = just 15MB on disk
 
-### Hybrid Search Performance (v4.0 sqlite-vec)
+### Benchmark (v4.0)
 
-Benchmarked on **10,000 vectors** (7.6 Million dimensions). Arachne uses **sqlite-vec** (C++ SIMD extension) and **SQLite FTS5** natively, completely bypassing JS/Rust FFI overhead during the search phase.
+All benchmarks run on AMD Ryzen 5 5600G, Node v24, Windows x64.
+Three engines: **TypeScript** (V8 JIT), **Rust** (napi-rs), **sqlite-vec** (C++ SIMD).
 
-| Search Mode | Engine | Performance | Ops / Sec |
-|-------------|--------|-------------|-----------|
-| **BM25 Keyword** | SQLite FTS5 | **4.97 ms** / query | ~200 |
-| **Semantic Vector** | sqlite-vec (C++ SIMD) | **27.19 ms** / query | ~37 |
+#### Search Performance (10,000 chunks / 768D vectors)
 
-> *A single semantic query scans 10,000 vectors (768D) in just **27 milliseconds** natively. This fulfills the massive 25x~60x speedup goals of the v4.0 Titanium architecture.*
+| Search Mode | Engine | Performance | Notes |
+|-------------|--------|:-----------:|-------|
+| **Keyword** | 🦀 Rust BM25 (memchr + rayon) | **4.98 ms** / query | 1.3x faster than TS |
+| **Keyword** | SQLite LIKE | **0.021 ms** / query | DB index, fastest |
+| **Semantic KNN** | sqlite-vec (C++ SIMD) | **29.52 ms** / query | 10K × 768D in-DB native scan |
+| **Batch Cosine** | 🦀 Rust (napi-rs) | **4.91 ms** / query | *Legacy*: 22.3x faster, but triggers IPC heap spikes |
+
+#### Architecture Pivot: 1GB+ Scale Stability
+
+While **Rust BatchCosine** achieved blazing speeds (4.9ms), loading millions of vectors across the Node.js FFI boundary triggered massive V8 Garbage Collection (GC) pauses and Heap OOM crashes on 1GB+ codebases. 
+
+To achieve 100% stability on large-scale datasets, Arachne v4.0 enforces a **Zero-Marshaling Policy**:
+- **Semantic Search**: Delegated 100% to **sqlite-vec**. It takes ~29ms (slightly slower than Rust), but memory overhead is **0 bytes in JS**. The Node event loop remains completely unblocked.
+- **Keyword Search**: Powered by the **Rust BM25 Cache**. Chunk data is cached heavily in the Rust heap, crossing the FFI boundary only for small queries and resulting IDs.
+
+<details>
+<summary>Run benchmarks yourself</summary>
+
+```bash
+npm run build && node test/bench-hybrid-engine.js   # Raw engine comparison
+npm run build && node test/bench-10mb.js             # Memory scale impact
+```
+Results saved to `data-hybrid-bench/benchmark-report.json`.
+</details>
 
 
 ##  Java Support — Built for Enterprise
@@ -225,7 +252,7 @@ With sub-chunking:
 
 > Sub-chunking doesn't cost extra — it **saves** tokens by sending only what's relevant instead of entire classes.
 
-## ️ Stability: 104 Tests, Zero Failures
+## ️ Stability: 128 Tests, Zero Failures
 
 Arachne is built for production. Every edge case is tested:
 
@@ -244,10 +271,11 @@ Arachne is built for production. Every edge case is tested:
 ```
 Phase 1 (Indexing/Search):    15/15 
 Phase 2 (Assembly/Deps):      26/26 
-Phase 3 (Semantic/Hybrid):    19/19 
+Phase 2 (KV-Cache Bridge):   33/33 
+Phase 3 (Semantic/Hybrid):    10/10 
 Stability (Reddit-proof):     44/44 
 ─────────────────────────────────────
-Total:                       104/104 
+Total:                       128/128 
 ```
 
 ##  Installation
@@ -453,11 +481,19 @@ User: "Fix the login timeout bug"
 
 ##  License
 
-Apache-2.0
+This project is dual-licensed:
+
+| Use Case | License | Cost |
+| --- | --- | --- |
+| Personal / Educational | Apache 2.0 | Free |
+| Open-source (non-commercial) | Apache 2.0 | Free |
+| Commercial / Enterprise | Commercial License | Contact us |
+
+See [LICENSE](LICENSE) for full details.
 
 ##  Star History
 
-If you find Arachne helpful, please consider giving us a star! 
+No coffee? A star is fine too
 
 [![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
 

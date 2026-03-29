@@ -10,6 +10,14 @@ import type {
   AssembleOptions, AssembleResult, ChunkRow, SearchResult,
 } from '../types';
 
+/** File tree node for L1 structure generation */
+interface TreeNode {
+  _file?: boolean;
+  _lang?: string | null;
+  _chunks?: number;
+  [key: string]: TreeNode | boolean | string | number | null | undefined;
+}
+
 /**
  * Estimate token count (without exact tokenizer)
  */
@@ -55,67 +63,54 @@ export class Assembler {
     const enabledLayers = options.layers ?? ['fixed', 'shortTerm', 'associative', 'spare'];
     const projectDir = options.projectDir ?? this._store.getMeta('project_dir') ?? process.cwd();
 
-    const layerResults: Record<string, LayerResult> = {};
-    let totalUsed = 0;
+    const { layerResults, totalUsed } = await this._executeLayers(
+      safeQuery, enabledLayers, budget, projectDir, options.activeFile,
+    );
 
-    // ── Layer 1: Fixed (file tree) ──
-    if (enabledLayers.includes('fixed')) {
-      const l1Budget = Math.floor(budget * this._layers.fixed);
-      const l1 = this._buildLayer1(projectDir, l1Budget);
-      layerResults['fixed'] = l1;
-      totalUsed += l1.tokens;
-    }
-
-    // ── Layer 2: Short-term (active file + recent access) ──
-    if (enabledLayers.includes('shortTerm')) {
-      const l2Budget = Math.floor(budget * this._layers.shortTerm);
-      const l2 = this._buildLayer2(options.activeFile, l2Budget, projectDir);
-      layerResults['shortTerm'] = l2;
-      totalUsed += l2.tokens;
-    }
-
-    // ── Layer 3: Associative (search + dependencies) ── ★core
-    if (enabledLayers.includes('associative')) {
-      const l3Budget = Math.floor(budget * this._layers.associative);
-      const l3 = await this._buildLayer3(safeQuery, options.activeFile, l3Budget);
-      layerResults['associative'] = l3;
-      totalUsed += l3.tokens;
-    }
-
-    // ── Layer 4: Spare (frequently accessed files) ──
-    if (enabledLayers.includes('spare')) {
-      const l4Budget = Math.min(
-        Math.floor(budget * this._layers.spare),
-        budget - totalUsed
-      );
-      if (l4Budget > 500) {
-        const l4 = this._buildLayer4(l4Budget);
-        layerResults['spare'] = l4;
-        totalUsed += l4.tokens;
-      }
-    }
-
-    // ── Record access log ──
     this._logAccess(safeQuery, options.activeFile, layerResults);
-
-    // ── Lost in the Middle prevention: L1 → L3 → L4 → L2 ──
     const context = this._arrangeOutput(layerResults);
 
     return {
       context,
       metadata: {
-        query: safeQuery,
-        budget,
+        query: safeQuery, budget,
         tokensUsed: totalUsed,
         tokensRemaining: budget - totalUsed,
         layers: Object.fromEntries(
-          Object.entries(layerResults).map(([k, v]) => [k, {
-            tokens: v.tokens,
-            itemCount: v.items.length,
-          }])
+          Object.entries(layerResults).map(([k, v]) => [k, { tokens: v.tokens, itemCount: v.items.length }])
         ),
       },
     };
+  }
+
+  /** Execute each enabled layer within budget */
+  private async _executeLayers(
+    query: string, enabledLayers: string[], budget: number,
+    projectDir: string, activeFile?: string,
+  ): Promise<{ layerResults: Record<string, LayerResult>; totalUsed: number }> {
+    const layerResults: Record<string, LayerResult> = {};
+    let totalUsed = 0;
+
+    if (enabledLayers.includes('fixed')) {
+      const l1 = this._buildLayer1(projectDir, Math.floor(budget * this._layers.fixed));
+      layerResults['fixed'] = l1; totalUsed += l1.tokens;
+    }
+    if (enabledLayers.includes('shortTerm')) {
+      const l2 = this._buildLayer2(activeFile, Math.floor(budget * this._layers.shortTerm), projectDir);
+      layerResults['shortTerm'] = l2; totalUsed += l2.tokens;
+    }
+    if (enabledLayers.includes('associative')) {
+      const l3 = await this._buildLayer3(query, activeFile, Math.floor(budget * this._layers.associative));
+      layerResults['associative'] = l3; totalUsed += l3.tokens;
+    }
+    if (enabledLayers.includes('spare')) {
+      const l4Budget = Math.min(Math.floor(budget * this._layers.spare), budget - totalUsed);
+      if (l4Budget > 500) {
+        const l4 = this._buildLayer4(l4Budget);
+        layerResults['spare'] = l4; totalUsed += l4.tokens;
+      }
+    }
+    return { layerResults, totalUsed };
   }
 
   // ── Layer Builders ──
@@ -137,40 +132,48 @@ export class Assembler {
     return { text: tree, tokens, items: [] };
   }
 
+  /** Load active file content (full or chunked) */
+  private _loadActiveFile(
+    activeFile: string, budget: number, projectDir: string,
+  ): { text: string; tokens: number; items: LayerItem[] } {
+    const fileRecord = this._store.getFileByPath(activeFile);
+    if (!fileRecord) return { text: '', tokens: 0, items: [] };
+
+    const fullPath = path.join(projectDir, activeFile);
+    try {
+      const content = fs.readFileSync(fullPath, 'utf-8');
+      const fileTokens = estimateTokens(content);
+
+      if (fileTokens <= budget * 0.7) {
+        const text = `\n## Active File: ${activeFile}\n\`\`\`${fileRecord.language ?? ''}\n${content}\n\`\`\`\n`;
+        return { text, tokens: fileTokens, items: [{ type: 'activeFile', path: activeFile, tokens: fileTokens }] };
+      }
+
+      const chunks = this._store.getChunksByFileId(fileRecord.id);
+      let chunkText = '';
+      let chunkTokens = 0;
+      for (const chunk of chunks) {
+        if (chunkTokens + chunk.token_count > budget * 0.7) break;
+        chunkText += `// ${chunk.name ?? chunk.chunk_type} (L${chunk.start_line}-${chunk.end_line})\n${chunk.content}\n\n`;
+        chunkTokens += chunk.token_count;
+      }
+      const text = `\n## Active File: ${activeFile} (key chunks)\n\`\`\`${fileRecord.language ?? ''}\n${chunkText}\`\`\`\n`;
+      return { text, tokens: chunkTokens, items: [{ type: 'activeFileChunks', path: activeFile, tokens: chunkTokens }] };
+    } catch {
+      return { text: '', tokens: 0, items: [] };
+    }
+  }
+
   private _buildLayer2(activeFile: string | undefined, budget: number, projectDir: string): LayerResult {
     let text = '';
     let tokens = 0;
     const items: LayerItem[] = [];
 
     if (activeFile) {
-      const fileRecord = this._store.getFileByPath(activeFile);
-      if (fileRecord) {
-        const fullPath = path.join(projectDir, activeFile);
-        try {
-          const content = fs.readFileSync(fullPath, 'utf-8');
-          const fileTokens = estimateTokens(content);
-
-          if (fileTokens <= budget * 0.7) {
-            text += `\n## Active File: ${activeFile}\n\`\`\`${fileRecord.language ?? ''}\n${content}\n\`\`\`\n`;
-            tokens += fileTokens;
-            items.push({ type: 'activeFile', path: activeFile, tokens: fileTokens });
-          } else {
-            const chunks = this._store.getChunksByFileId(fileRecord.id);
-            let chunkText = '';
-            let chunkTokens = 0;
-            for (const chunk of chunks) {
-              if (chunkTokens + chunk.token_count > budget * 0.7) break;
-              chunkText += `// ${chunk.name ?? chunk.chunk_type} (L${chunk.start_line}-${chunk.end_line})\n${chunk.content}\n\n`;
-              chunkTokens += chunk.token_count;
-            }
-            text += `\n## Active File: ${activeFile} (key chunks)\n\`\`\`${fileRecord.language ?? ''}\n${chunkText}\`\`\`\n`;
-            tokens += chunkTokens;
-            items.push({ type: 'activeFileChunks', path: activeFile, tokens: chunkTokens });
-          }
-        } catch {
-          // File read failure — ignore
-        }
-      }
+      const active = this._loadActiveFile(activeFile, budget, projectDir);
+      text += active.text;
+      tokens += active.tokens;
+      items.push(...active.items);
     }
 
     const remaining = budget - tokens;
@@ -182,12 +185,11 @@ export class Assembler {
         if (chunks.length === 0) continue;
 
         const topChunk = chunks[0]!;
-        const chunkTokens = topChunk.token_count;
-        if (tokens + chunkTokens > budget) break;
+        if (tokens + topChunk.token_count > budget) break;
 
         text += `\n## Recent File: ${rf.path}\n\`\`\`${topChunk.language ?? ''}\n${topChunk.content}\n\`\`\`\n`;
-        tokens += chunkTokens;
-        items.push({ type: 'recentFile', path: rf.path, tokens: chunkTokens });
+        tokens += topChunk.token_count;
+        items.push({ type: 'recentFile', path: rf.path, tokens: topChunk.token_count });
       }
     }
 
@@ -316,19 +318,19 @@ export class Assembler {
     const files = this._store.getAllFiles();
     if (files.length === 0) return '(no indexed files)';
 
-    const tree: Record<string, unknown> = {};
+    const tree: TreeNode = {};
     for (const f of files) {
       const parts = f.path.split('/');
       if (parts.length - 1 > maxDepth) continue;
 
-      let node: Record<string, unknown> = tree;
+      let node: TreeNode = tree;
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i]!;
         if (i === parts.length - 1) {
           node[part] = { _file: true, _lang: f.language, _chunks: f.chunk_count };
         } else {
           if (!node[part]) node[part] = {};
-          node = node[part] as Record<string, unknown>;
+          node = node[part] as TreeNode;
         }
       }
     }
@@ -336,12 +338,12 @@ export class Assembler {
     return this._renderTree(tree, '', true);
   }
 
-  private _renderTree(node: Record<string, unknown>, prefix: string, isRoot: boolean): string {
+  private _renderTree(node: TreeNode, prefix: string, isRoot: boolean): string {
     const lines: string[] = [];
     const entries = Object.entries(node).filter(([k]) => !k.startsWith('_'));
     entries.sort((a, b) => {
-      const aIsDir = !(a[1] as Record<string, unknown>)._file;
-      const bIsDir = !(b[1] as Record<string, unknown>)._file;
+      const aIsDir = !(a[1] as TreeNode)?._file;
+      const bIsDir = !(b[1] as TreeNode)?._file;
       if (aIsDir !== bIsDir) return aIsDir ? -1 : 1;
       return a[0].localeCompare(b[0]);
     });
@@ -353,11 +355,11 @@ export class Assembler {
       const connector = isRoot ? '' : (isLast ? '└── ' : '├── ');
       const childPrefix = isRoot ? '' : prefix + (isLast ? '    ' : '│   ');
 
-      if ((child as Record<string, unknown>)._file) {
+      if ((child as TreeNode)?._file) {
         lines.push(`${prefix}${connector}${name}`);
       } else {
         lines.push(`${prefix}${connector}${name}/`);
-        lines.push(this._renderTree(child as Record<string, unknown>, childPrefix, false));
+        lines.push(this._renderTree(child as TreeNode, childPrefix, false));
       }
     }
 

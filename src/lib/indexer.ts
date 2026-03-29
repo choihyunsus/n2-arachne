@@ -36,7 +36,7 @@ export class Indexer {
     this._ignoreFilter = new IgnoreFilter(this._config.ignore, projectDir);
 
     // 1. Scan file list
-    const files = this._scanFiles(scanDir, projectDir);
+    const files = await this._scanFiles(scanDir, projectDir);
 
     // Max file count check
     const maxFiles = this._config.indexing.maxFiles || 50000;
@@ -56,6 +56,9 @@ export class Indexer {
     let skipped = 0;
 
     for (const fileMeta of files) {
+      if ((indexed + skipped) % 500 === 0 && (indexed + skipped) > 0) {
+        await new Promise(r => setImmediate(r));
+      }
       const result = this._indexFile(fileMeta, projectDir);
       if (result === 'indexed') indexed++;
       else skipped++;
@@ -76,53 +79,36 @@ export class Indexer {
   /**
    * Recursive directory scan
    */
-  private _scanFiles(dir: string, projectRoot: string): FileMeta[] {
+  private async _scanFiles(dir: string, projectRoot: string): Promise<FileMeta[]> {
     const results: FileMeta[] = [];
     const maxFileSize = this._config.indexing.maxFileSize || 1024 * 1024;
-    const supported = new Set<string>([
-      ...(this._config.indexing.supportedLanguages || []),
-      ...(this._config.indexing.alsoIndexAsText || []),
-    ]);
+    const supported = new Set([...(this._config.indexing.supportedLanguages || []), ...(this._config.indexing.alsoIndexAsText || [])]);
+    let scannedCount = 0;
 
-    const scan = (currentDir: string): void => {
+    const scan = async (currentDir: string): Promise<void> => {
       let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(currentDir, { withFileTypes: true });
-      } catch {
-        return; // Skip directories without read permission
-      }
+      try { entries = fs.readdirSync(currentDir, { withFileTypes: true }); } catch { return; }
 
       for (const entry of entries) {
+        if (++scannedCount % 500 === 0) await new Promise(r => setImmediate(r));
         const fullPath = path.join(currentDir, entry.name);
-        const relativePath = path.relative(projectRoot, fullPath);
-
         if (!this._ignoreFilter) continue;
-
-        // Check ignore filter
-        if (this._ignoreFilter.isIgnored(relativePath)) continue;
+        const rel = path.relative(projectRoot, fullPath);
+        if (this._ignoreFilter.isIgnored(rel)) continue;
 
         if (entry.isDirectory()) {
-          if (this._ignoreFilter.isIgnored(relativePath + '/')) continue;
-          scan(fullPath);
+          if (!this._ignoreFilter.isIgnored(rel + '/')) await scan(fullPath);
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).slice(1).toLowerCase();
           if (!supported.has(ext)) continue;
-
-          let stat: fs.Stats;
-          try { stat = fs.statSync(fullPath); } catch { continue; }
-          if (stat.size > maxFileSize) continue;
-          if (stat.size === 0) continue;
-
-          results.push({
-            absolutePath: fullPath,
-            relativePath: relativePath.replace(/\\/g, '/'),
-            stat,
-          });
+          try { 
+            const stat = fs.statSync(fullPath); 
+            if (stat.size > 0 && stat.size <= maxFileSize) results.push({ absolutePath: fullPath, relativePath: rel.replace(/\\/g, '/'), stat });
+          } catch {}
         }
       }
     };
-
-    scan(dir);
+    await scan(dir);
     return results;
   }
 
