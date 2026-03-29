@@ -1,6 +1,6 @@
 {
     "name": "n2-arachne",
-    "version": "4.0.2",
+    "version": "4.0.3",
     "description": "Arachne — Weaves code into optimal AI context via MCP. BM25 + semantic search, 4-layer assembly, any AI provider.",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
-        "@modelcontextprotocol/sdk": "~1.6.1",
+        "@modelcontextprotocol/sdk": "^1.25.2",
         "better-sqlite3": "^11.0.0",
         "sqlite-vec": "^0.1.7",
         "zod": "~3.24.1"
