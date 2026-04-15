@@ -15,6 +15,6 @@ tsconfig.json
 task.md
 walkthrough.md
 implementation_plan.md
-lib/
-tools/
+/lib/
+/tools/
 native/target/
