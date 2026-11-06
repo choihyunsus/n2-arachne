@@ -35,6 +35,43 @@ test('a transport with stalled cancellation cannot extend the response byte-limi
   }
 });
 
+test(
+  'embedding body deadlines work even when the transport ignores its abort signal',
+  { timeout: 2000 },
+  async () => {
+    const original = globalThis.fetch;
+    let cancelled = false;
+    try {
+      globalThis.fetch = async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('{'));
+            },
+            cancel() {
+              cancelled = true;
+              return new Promise(() => {});
+            },
+          }),
+        );
+      const client = new Embedding({
+        model: 'fixture',
+        endpoint: 'http://fixture.invalid',
+        timeoutMs: 20,
+      });
+      const timer = setTimeout(() => {}, 1000);
+      try {
+        await assert.rejects(client.embed('fixture'), /timeout|aborted/i);
+      } finally {
+        clearTimeout(timer);
+      }
+      assert.equal(cancelled, true);
+    } finally {
+      globalThis.fetch = original;
+    }
+  },
+);
+
 async function provider() {
   const state = {
     mode: 'normal',

@@ -94,28 +94,37 @@ export class Embedding {
   }
 
   private async request(input: string): Promise<OllamaEmbeddingResponse> {
-    let response = await this.post('embed', {
-      model: this.model,
-      input,
-      truncate: false,
-    });
+    const signal = AbortSignal.timeout(this.timeout);
+    let response = await this.post(
+      'embed',
+      {
+        model: this.model,
+        input,
+        truncate: false,
+      },
+      signal,
+    );
     if ([404, 405].includes(response.status)) {
       void response.body?.cancel().catch(() => undefined);
-      response = await this.post('embeddings', {
-        model: this.model,
-        prompt: input,
-      });
+      response = await this.post(
+        'embeddings',
+        {
+          model: this.model,
+          prompt: input,
+        },
+        signal,
+      );
     }
     if (!response.ok) {
       void response.body?.cancel().catch(() => undefined);
       throw new Error(`Embedding service returned HTTP ${response.status}`);
     }
-    const data: unknown = JSON.parse(await readResponseText(response, 4 * 1048576));
+    const data: unknown = JSON.parse(await readResponseText(response, 4 * 1048576, signal));
     if (!data || typeof data !== 'object') throw new Error('Invalid embedding response');
     return data as OllamaEmbeddingResponse;
   }
 
-  private post(action: string, body: object): Promise<Response> {
+  private post(action: string, body: object, signal: AbortSignal): Promise<Response> {
     const endpoint = httpUrl(this.endpoint);
     const base = endpoint.pathname.replace(/\/+$/, '');
     endpoint.pathname = `${base.endsWith('/api') ? base : base + '/api'}/${action}`;
@@ -128,7 +137,7 @@ export class Embedding {
       headers,
       body: JSON.stringify(body),
       redirect: 'error',
-      signal: AbortSignal.timeout(this.timeout),
+      signal,
     });
   }
 }
