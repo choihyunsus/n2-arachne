@@ -1,9 +1,12 @@
-// Shared type definitions for Arachne v4.0
+// Shared type definitions for Arachne 5.0
 
 // ── Config Types ──
 
 export interface ArachneConfig {
   dataDir: string;
+  dbPath?: string;
+  project?: string;
+  agent?: string;
   projectDir?: string;
   indexing: IndexingConfig;
   assembly: AssemblyConfig;
@@ -24,12 +27,15 @@ export interface IndexingConfig {
   tokenMultiplier: number;
   supportedLanguages: string[];
   alsoIndexAsText: string[];
+  documentFormats?: string[];
+  maxDocumentSize?: number;
 }
 
 export interface AssemblyConfig {
   defaultBudget: number;
   layers: LayerWeights;
   dependencyDepth: number;
+  tokenMultiplier?: number;
 }
 
 export interface LayerWeights {
@@ -42,6 +48,7 @@ export interface LayerWeights {
 export interface SearchConfig {
   bm25: { k1: number; b: number };
   topK: number;
+  maxCacheBytes?: number;
 }
 
 export interface EmbeddingConfig {
@@ -49,6 +56,8 @@ export interface EmbeddingConfig {
   provider: string;
   model: string;
   endpoint: string;
+  timeoutMs?: number;
+  apiKey?: string;
 }
 
 export interface IgnoreConfig {
@@ -103,6 +112,7 @@ export interface FileRow {
   id: number;
   path: string;
   hash: string;
+  source_hash?: string | null;
   language: string | null;
   size_bytes: number;
   chunk_count: number;
@@ -199,6 +209,7 @@ export interface AssembleMetadata {
   tokensUsed: number;
   tokensRemaining: number;
   layers: Record<string, { tokens: number; itemCount: number }>;
+  warnings?: string[];
 }
 
 // ── Indexer Types ──
@@ -206,6 +217,7 @@ export interface AssembleMetadata {
 export interface IndexOptions {
   force?: boolean;
   subPath?: string;
+  signal?: AbortSignal;
 }
 
 export interface IndexResult {
@@ -214,6 +226,8 @@ export interface IndexResult {
   removed: number;
   elapsed: number;
   total: number;
+  complete: boolean;
+  issues: Array<{ path: string; message: string }>;
 }
 
 export interface FileMeta {
@@ -245,6 +259,7 @@ export interface BackupCreateResult {
   size: number;
   files: number;
   chunks: number;
+  exportedTo?: string;
 }
 
 export interface BackupRestoreResult {
@@ -284,6 +299,7 @@ export interface ResolvedDep {
 // ── Vector Types ──
 
 export interface VectorSearchResult {
+  sourceHash?: string;
   chunkId: number;
   distance: number;
 }
@@ -292,6 +308,9 @@ export interface EmbedResult {
   embedded: number;
   skipped: number;
   errors: number;
+  remaining: number;
+  complete: boolean;
+  lastError?: string;
 }
 
 // ── Chunker Types ──
@@ -313,6 +332,7 @@ export interface OllamaEmbeddingResponse {
 // ── KV-Cache Types (Phase 2) ──
 
 export interface SearchHistoryEntry {
+  id?: string;
   query: string;
   timestamp: string;
   resultCount: number;
@@ -322,6 +342,8 @@ export interface ArachneKVData {
   version: string;
   lastSavedAt: string;
   projectDir: string;
+  project?: string;
+  agent?: string;
   fileCount: number;
   chunkCount: number;
   totalTokens: number;

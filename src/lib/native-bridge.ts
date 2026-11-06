@@ -4,18 +4,53 @@ import * as path from 'path';
 
 /** Shape of the native Rust module (mirrors napi-rs exports) */
 interface NativeModule {
-  scanFiles(projectDir: string, extensions: string[], ignorePatterns: string[], maxFileSize: number): {
-    files: Array<{ path: string; hash: string; extension: string; size: number; modifiedAt: string }>;
+  apiVersion(): number;
+  Bm25Index: new (
+    ids: number[],
+    texts: string[],
+  ) => {
+    search(
+      query: string,
+      topK: number,
+      k1: number,
+      b: number,
+    ): Array<{ chunkId: number; score: number }>;
+  };
+  scanFiles(
+    projectDir: string,
+    extensions: string[],
+    ignorePatterns: string[],
+    maxFileSize: number,
+  ): {
+    files: Array<{
+      path: string;
+      hash: string;
+      extension: string;
+      size: number;
+      modifiedAt: string;
+    }>;
     elapsedMs: number;
   };
-  bm25Search(query: string, chunkIds: number[], searchTexts: string[], topK: number, k1: number, b: number): Array<{
+  bm25Search(
+    query: string,
+    chunkIds: number[],
+    searchTexts: string[],
+    topK: number,
+    k1: number,
+    b: number,
+  ): Array<{
     chunkId: number;
     score: number;
   }>;
   /** Cache chunk data in Rust heap (call once). Zero marshaling on subsequent searches. */
   bm25InitStore(chunkIds: number[], searchTexts: string[]): void;
   /** Search using cached data. Only query crosses FFI boundary. */
-  bm25SearchCached(query: string, topK: number, k1: number, b: number): Array<{
+  bm25SearchCached(
+    query: string,
+    topK: number,
+    k1: number,
+    b: number,
+  ): Array<{
     chunkId: number;
     score: number;
   }>;
@@ -41,8 +76,6 @@ function tryLoadNative(): NativeModule | null {
   const candidates = [
     // napi-rs default output location
     path.resolve(__dirname, '../../native/arachne-native.node'),
-    // Windows release build output
-    path.resolve(__dirname, '../../native/target/release/arachne_native.dll'),
     // Platform-specific napi output
     path.resolve(__dirname, '../../arachne-native.win32-x64-msvc.node'),
   ];
@@ -51,7 +84,7 @@ function tryLoadNative(): NativeModule | null {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mod = require(candidate) as NativeModule;
-      if (typeof mod.bm25Search === 'function') {
+      if (mod.apiVersion?.() === 1 && typeof mod.Bm25Index === 'function') {
         _native = mod;
         console.error(`[n2-arachne] 🦀 Native Rust module loaded: ${candidate}`);
         return _native;

@@ -1,4 +1,4 @@
-// tsconfig.json — Arachne v4.0 TypeScript strict configuration
+// tsconfig.json — Arachne 5.0 TypeScript strict configuration
 {
   "compilerOptions": {
     "target": "ES2022",

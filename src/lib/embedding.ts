@@ -1,122 +1,134 @@
-// Ollama embedding engine (adapted from QLN embedding.js)
-// Generates vectors via local Ollama nomic-embed-text, graceful degradation if unavailable
-import http from 'http';
+// Bounded Ollama embedding requests with retryable availability and checked vector spaces.
 import type { EmbeddingConfig, OllamaEmbeddingResponse } from '../types';
+import { httpUrl, readResponseText } from './http';
+import { vectorValues, cosine } from './vectors';
 
 export class Embedding {
   readonly model: string;
   readonly endpoint: string;
   dimensions: number | null = null;
-  private _available: boolean | null = null;
+  private available: boolean | null = null;
+  private checkedAt = 0;
+  private lastError: string | null = null;
+  private readonly timeout: number;
+  private readonly apiKey?: string;
 
   constructor(config: Partial<EmbeddingConfig> = {}) {
+    if (config.provider && config.provider !== 'ollama')
+      throw new Error('Configure the supported Ollama embedding provider');
     this.model = config.model ?? 'nomic-embed-text';
-    this.endpoint = config.endpoint ?? 'http://127.0.0.1:11434';
+    this.endpoint = httpUrl(config.endpoint ?? 'http://127.0.0.1:11434').toString();
+    this.timeout = config.timeoutMs ?? 10000;
+    this.apiKey = config.apiKey;
+    if (
+      !this.model.trim() ||
+      this.model.length > 512 ||
+      !Number.isSafeInteger(this.timeout) ||
+      this.timeout < 1 ||
+      this.timeout > 60000
+    )
+      throw new Error('Invalid embedding configuration');
   }
 
-  /**
-   * Check Ollama availability (cached, checked once)
-   */
+  getLastError(): string | null {
+    return this.lastError;
+  }
+
   async isAvailable(): Promise<boolean> {
-    if (this._available !== null) return this._available;
+    if (this.available !== null && Date.now() - this.checkedAt < 30000) return this.available;
     try {
-      const vec = await this.embed('test');
-      this._available = vec.length > 0;
-      this.dimensions = vec.length;
-      return this._available;
+      await this.embed('availability probe');
+      return true;
     } catch {
-      this._available = false;
       return false;
     }
   }
 
-  /** Reset availability cache (for reconnection attempts) */
   resetAvailability(): void {
-    this._available = null;
+    this.available = null;
     this.dimensions = null;
+    this.checkedAt = 0;
   }
 
-  /**
-   * Generate vector embedding from text
-   */
   async embed(text: string): Promise<number[]> {
-    if (!text || text.trim().length === 0) return [];
-    const input = text.length > 2000 ? text.slice(0, 2000) : text;
-
-    for (const apiPath of ['/api/embeddings', '/api/embed']) {
-      try {
-        const body = apiPath === '/api/embeddings'
-          ? { model: this.model, prompt: input }
-          : { model: this.model, input: input };
-        const result = await this._post(apiPath, body) as OllamaEmbeddingResponse;
-
-        if (result.embedding && Array.isArray(result.embedding)) {
-          this.dimensions = result.embedding.length;
-          return result.embedding;
-        }
-        if (result.embeddings && Array.isArray(result.embeddings) && result.embeddings[0]) {
-          this.dimensions = result.embeddings[0].length;
-          return result.embeddings[0];
-        }
-      } catch { continue; }
+    if (typeof text !== 'string' || text.length > 65536)
+      throw new Error('Embedding input exceeds 65536 characters');
+    if (!text.trim()) return [];
+    try {
+      const data = await this.request(text);
+      const vector = vectorValues(data.embedding ?? data.embeddings?.[0]);
+      const model = (data as OllamaEmbeddingResponse & { model?: unknown }).model;
+      if (
+        model !== undefined &&
+        (typeof model !== 'string' ||
+          model.replace(/:latest$/, '') !== this.model.replace(/:latest$/, ''))
+      )
+        throw new Error('Embedding response model differs from the configured model');
+      if (this.dimensions !== null && this.dimensions !== vector.length)
+        throw new Error('Embedding model changed its vector dimensions');
+      this.dimensions = vector.length;
+      this.available = true;
+      this.lastError = null;
+      this.checkedAt = Date.now();
+      return vector;
+    } catch (error) {
+      this.available = false;
+      this.dimensions = null;
+      this.checkedAt = Date.now();
+      this.lastError = (error as Error).message;
+      throw error;
     }
-    return [];
   }
 
-  /**
-   * Batch embedding generation
-   */
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const results: number[][] = [];
-    for (const text of texts) {
-      results.push(await this.embed(text));
-    }
-    return results;
+    if (!Array.isArray(texts) || texts.length > 256)
+      throw new Error('Embedding batch must contain at most 256 texts');
+    const vectors: number[][] = [];
+    for (const text of texts) vectors.push(await this.embed(text));
+    return vectors;
   }
 
-  /**
-   * Cosine similarity calculation
-   */
-  cosineSimilarity(a: number[], b: number[]): number {
-    if (!a || !b || a.length === 0 || a.length !== b.length) return 0;
-    let dot = 0, normA = 0, normB = 0;
-    for (let i = 0; i < a.length; i++) {
-      dot += a[i]! * b[i]!;
-      normA += a[i]! * a[i]!;
-      normB += b[i]! * b[i]!;
-    }
-    const denom = Math.sqrt(normA) * Math.sqrt(normB);
-    return denom === 0 ? 0 : dot / denom;
+  cosineSimilarity(left: number[], right: number[]): number {
+    if (!left?.length || !right?.length || left.length !== right.length) return 0;
+    return cosine(vectorValues(left), vectorValues(right));
   }
 
-  /** HTTP POST to Ollama API */
-  private _post(apiPath: string, body: Record<string, unknown>): Promise<unknown> {
-    return new Promise((resolve, reject) => {
-      const url = new URL(this.endpoint);
-      const options: http.RequestOptions = {
-        hostname: url.hostname,
-        port: url.port || 11434,
-        path: apiPath,
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
-      };
-      const req = http.request(options, res => {
-        let data = '';
-        res.on('data', (chunk: Buffer) => { data += chunk.toString(); });
-        res.on('end', () => {
-          if ((res.statusCode ?? 500) >= 400) {
-            reject(new Error(`Ollama ${res.statusCode ?? 'unknown'}: ${data.slice(0, 200)}`));
-            return;
-          }
-          try { resolve(JSON.parse(data)); }
-          catch { reject(new Error(`Invalid JSON: ${data.slice(0, 100)}`)); }
-        });
+  private async request(input: string): Promise<OllamaEmbeddingResponse> {
+    let response = await this.post('embed', {
+      model: this.model,
+      input,
+      truncate: false,
+    });
+    if ([404, 405].includes(response.status)) {
+      void response.body?.cancel().catch(() => undefined);
+      response = await this.post('embeddings', {
+        model: this.model,
+        prompt: input,
       });
-      req.on('error', reject);
-      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')); });
-      req.write(JSON.stringify(body));
-      req.end();
+    }
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => undefined);
+      throw new Error(`Embedding service returned HTTP ${response.status}`);
+    }
+    const data: unknown = JSON.parse(await readResponseText(response, 4 * 1048576));
+    if (!data || typeof data !== 'object') throw new Error('Invalid embedding response');
+    return data as OllamaEmbeddingResponse;
+  }
+
+  private post(action: string, body: object): Promise<Response> {
+    const endpoint = httpUrl(this.endpoint);
+    const base = endpoint.pathname.replace(/\/+$/, '');
+    endpoint.pathname = `${base.endsWith('/api') ? base : base + '/api'}/${action}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (this.apiKey) headers.Authorization = `Bearer ${this.apiKey}`;
+    return fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      redirect: 'error',
+      signal: AbortSignal.timeout(this.timeout),
     });
   }
 }

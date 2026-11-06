@@ -1,0 +1,24 @@
+name: Verify release source
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: rustup toolchain install 1.98.0 --profile minimal
+      - run: npm ci
+      - run: npm run build:documents
+      - run: npm test
+      - run: cargo +1.98.0 test --locked --manifest-path document-worker/Cargo.toml --jobs 2
+      - run: cargo +1.98.0 test --locked --manifest-path native/Cargo.toml --jobs 2
+      - run: npm audit --omit=dev --audit-level=low

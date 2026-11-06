@@ -1,3 +1,21 @@
+# 5.0.0
+
+- Share the distribution Soul schema with explicit project/agent ownership and additive module migrations.
+- Import legacy context databases and session history with transactional receipts and source-root checks.
+- Fix cross-instance native search caches, stale results after external writes, live restore and scope filtering.
+- Add portable model-scoped vectors, checked Ollama responses, bounded requests and resumable batches.
+- Bound source discovery, text windows, context assembly, snapshot copies and document subprocesses.
+- Add PDF/DOCX/PPTX/XLSX extraction, stable document fingerprints, dependency resolution and graph health.
+- Connect MCP before background work, report partial coverage, propagate indexing cancellation and stop on stdin EOF.
+- Expose a side-effect-free library, preserve the CLI entry point and add executable regression coverage.
+- Preserve the root license terms and include imported-code and binary dependency notices.
+
+## 한국어
+
+Soul 공통 DB와 소유자별 격리, 기존 데이터 이전, 검색·복원 오류 수정, 제한된 문서 파서와 문맥 조립, 의존성 통계, MCP 취소·재시작 처리 및 라이브러리 진입점을 제공합니다. 처리 범위와 이전 절차는 README.ko.md를 확인하세요.
+
+## Historical entries
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

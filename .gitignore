@@ -14,4 +14,7 @@ walkthrough.md
 implementation_plan.md
 test/
 native/target/
+native/*.node
+document-worker/target/
+bin/
 data-*-bench/

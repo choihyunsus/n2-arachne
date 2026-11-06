@@ -1,126 +1,65 @@
-// File exclusion rules (.gitignore + .contextignore)
-import fs from 'fs';
-import path from 'path';
+// Root ignore files use Git-style patterns, including negation and escaped literals.
+import fs from 'node:fs';
+import path from 'node:path';
+import ignore from 'ignore';
 import type { IgnoreConfig } from '../types';
 
 export class IgnoreFilter {
-  private readonly _patterns: string[] = [];
-  private readonly _compiled: RegExp[];
+  private readonly matcher = ignore({
+    ignorecase: process.platform === 'win32',
+  });
+  private readonly patterns: string[] = [];
 
   constructor(config: IgnoreConfig, projectDir: string) {
-
-    // 1. Default patterns (from config.default.js)
-    if (config.patterns && config.patterns.length > 0) {
-      this._patterns.push(...config.patterns);
-    }
-
-    // 2. Load .gitignore
-    if (config.useGitignore) {
-      this._loadIgnoreFile(path.join(projectDir, '.gitignore'));
-    }
-
-    // 3. Load .contextignore (highest priority)
-    if (config.useContextignore) {
-      this._loadIgnoreFile(path.join(projectDir, '.contextignore'));
-    }
-
-    // Pre-compile patterns to regex
-    this._compiled = this._patterns.map(p => this._globToRegex(p));
+    this.add(config.patterns ?? []);
+    if (config.useGitignore) this.loadFile(path.join(projectDir, '.gitignore'));
+    if (config.useContextignore) this.loadFile(path.join(projectDir, '.contextignore'));
   }
 
-  /**
-   * Check if file path should be excluded
-   */
   isIgnored(relativePath: string): boolean {
-    // Normalize path (Windows backslash → slash)
-    const normalized = relativePath.replace(/\\/g, '/');
-
-    for (const regex of this._compiled) {
-      if (regex.test(normalized)) {
-        return true;
-      }
-    }
-    return false;
+    return this.matcher.ignores(relativePath.replace(/\\/g, '/'));
   }
 
-  /**
-   * Filter excluded paths from file list
-   */
   filter(paths: string[]): string[] {
-    return paths.filter(p => !this.isIgnored(p));
+    return paths.filter((filename) => !this.isIgnored(filename));
   }
-
-  /** Number of loaded patterns */
   get patternCount(): number {
-    return this._compiled.length;
+    return this.patterns.length;
   }
 
-  /**
-   * Load ignore file (.gitignore / .contextignore)
-   */
-  private _loadIgnoreFile(filePath: string): void {
-    if (!fs.existsSync(filePath)) return;
-
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const lines = content.split('\n');
-
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      // Skip empty lines and comments
-      if (!line || line.startsWith('#')) continue;
-      // Negation patterns (!) — not yet supported, skip
-      if (line.startsWith('!')) continue;
-      this._patterns.push(line);
+  private add(patterns: string[]): void {
+    if (
+      patterns.some((pattern) => typeof pattern !== 'string') ||
+      patterns.length + this.patterns.length > 10000
+    ) {
+      throw new Error('Invalid or excessive ignore patterns');
     }
+    this.patterns.push(...patterns);
+    this.matcher.add(patterns);
   }
 
-  /**
-   * Convert glob pattern to regex
-   * Supports: *, **, ?, path separators
-   */
-  private _globToRegex(pattern: string): RegExp {
-    // Clean leading/trailing slashes
-    let p = pattern.replace(/\\/g, '/').replace(/^\/+/, '');
-
-    // Directory pattern (ends with /) — include all children
-    if (p.endsWith('/')) {
-      p += '**';
+  private loadFile(filename: string): void {
+    let metadata: fs.Stats;
+    try {
+      metadata = fs.lstatSync(filename);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw error;
     }
-
-    let regex = '';
-    let i = 0;
-    while (i < p.length) {
-      const c = p[i];
-      if (c === '*') {
-        if (p[i + 1] === '*') {
-          if (p[i + 2] === '/') {
-            regex += '(?:.*\\/)?';
-            i += 3;
-          } else {
-            regex += '.*';
-            i += 2;
-          }
-        } else {
-          regex += '[^/]*';
-          i++;
-        }
-      } else if (c === '?') {
-        regex += '[^/]';
-        i++;
-      } else if (c === '.') {
-        regex += '\\.';
-        i++;
-      } else {
-        regex += c;
-        i++;
-      }
+    if (!metadata.isFile() || metadata.isSymbolicLink())
+      throw new Error('Ignore configuration must be a regular file');
+    const maximum = 1048576;
+    const descriptor = fs.openSync(filename, 'r');
+    try {
+      const bytes = Buffer.alloc(Math.min(metadata.size + 1, maximum + 1));
+      const read = fs.readSync(descriptor, bytes, 0, bytes.length, 0);
+      if (metadata.size > maximum || read > maximum || read > metadata.size)
+        throw new Error('Ignore configuration exceeds 1 MiB');
+      this.add(
+        new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, read)).split(/\r?\n/),
+      );
+    } finally {
+      fs.closeSync(descriptor);
     }
-
-    // Extension patterns (*.js) should match anywhere in path
-    if (pattern.startsWith('*.')) {
-      return new RegExp(`(?:^|\\/)${regex}$`, 'i');
-    }
-
-    return new RegExp(`^${regex}$`, 'i');
   }
 }

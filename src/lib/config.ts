@@ -2,6 +2,7 @@
 import path from 'path';
 import fs from 'fs';
 import type { ArachneConfig } from '../types';
+import { validateConfig, booleanEnvironment } from './config-validation';
 
 /**
  * Deep merge — config.local.js overrides config.default.js
@@ -11,6 +12,8 @@ import type { ArachneConfig } from '../types';
 export function deepMerge(target: ArachneConfig, source: Partial<ArachneConfig>): ArachneConfig {
   const result: Record<string, unknown> = { ...target };
   for (const key of Object.keys(source)) {
+    if (['__proto__', 'constructor', 'prototype'].includes(key))
+      throw new Error('Invalid configuration property');
     const sourceVal = (source as unknown as Record<string, unknown>)[key];
     const targetVal = (target as unknown as Record<string, unknown>)[key];
     if (
@@ -35,19 +38,59 @@ export function deepMerge(target: ArachneConfig, source: Partial<ArachneConfig>)
 /**
  * Environment variable override mapping
  */
-function applyEnvOverrides(config: ArachneConfig): ArachneConfig {
-  const envMap: Record<string, (c: ArachneConfig, v: string) => void> = {
-    'N2_CONTEXT_DATA_DIR': (c, v) => { c.dataDir = v; },
-    'N2_CONTEXT_PROJECT_DIR': (c, v) => { c.projectDir = v; },
-    'N2_CONTEXT_MAX_FILES': (c, v) => { c.indexing.maxFiles = parseInt(v, 10); },
-    'N2_CONTEXT_BUDGET': (c, v) => { c.assembly.defaultBudget = parseInt(v, 10); },
-    'N2_CONTEXT_EMBEDDING_ENABLED': (c, v) => { c.embedding.enabled = v === 'true'; },
-    'N2_CONTEXT_EMBEDDING_ENDPOINT': (c, v) => { c.embedding.endpoint = v; },
-    'N2_CONTEXT_BACKUP_DIR': (c, v) => { c.backup.dir = v; },
-    'N2_CONTEXT_EXTERNAL_BACKUP': (c, v) => { c.backup.externalBackupDir = v; },
-  };
+const ENV_OVERRIDES: Record<string, (c: ArachneConfig, v: string) => void> = {
+  N2_DATA_DIR: (c, v) => {
+    c.dataDir = v;
+  },
+  N2_CONTEXT_DB_PATH: (c, v) => {
+    c.dbPath = v;
+  },
+  N2_PROJECT: (c, v) => {
+    c.project = v;
+  },
+  N2_AGENT_NAME: (c, v) => {
+    c.agent = v;
+  },
+  N2_CONTEXT_DATA_DIR: (c, v) => {
+    c.dataDir = v;
+  },
+  N2_CONTEXT_PROJECT_DIR: (c, v) => {
+    c.projectDir = v;
+  },
+  N2_CONTEXT_MAX_FILES: (c, v) => {
+    c.indexing.maxFiles = Number(v);
+  },
+  N2_CONTEXT_BUDGET: (c, v) => {
+    c.assembly.defaultBudget = Number(v);
+  },
+  N2_CONTEXT_AUTO_INDEX: (c, v) => {
+    c.indexing.autoIndex = booleanEnvironment(v);
+  },
+  N2_CONTEXT_EMBEDDING_ENABLED: (c, v) => {
+    c.embedding.enabled = booleanEnvironment(v);
+  },
+  N2_CONTEXT_EMBEDDING_ENDPOINT: (c, v) => {
+    c.embedding.endpoint = v;
+  },
+  N2_CONTEXT_EMBEDDING_MODEL: (c, v) => {
+    c.embedding.model = v;
+  },
+  N2_CONTEXT_EMBEDDING_KEY: (c, v) => {
+    c.embedding.apiKey = v;
+  },
+  N2_CONTEXT_EMBEDDING_TIMEOUT: (c, v) => {
+    c.embedding.timeoutMs = Number(v);
+  },
+  N2_CONTEXT_BACKUP_DIR: (c, v) => {
+    c.backup.dir = v;
+  },
+  N2_CONTEXT_EXTERNAL_BACKUP: (c, v) => {
+    c.backup.externalBackupDir = v;
+  },
+};
 
-  for (const [envKey, applier] of Object.entries(envMap)) {
+function applyEnvOverrides(config: ArachneConfig): ArachneConfig {
+  for (const [envKey, applier] of Object.entries(ENV_OVERRIDES)) {
     const envVal = process.env[envKey];
     if (envVal) {
       applier(config, envVal);
@@ -64,7 +107,9 @@ export function loadConfig(baseDir?: string): ArachneConfig {
 
   // 1. Load default config
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const defaultConfig = require(path.join(root, 'config.default.js')) as ArachneConfig;
+  const defaultConfig = structuredClone(
+    require(path.join(root, 'config.default.js')),
+  ) as ArachneConfig;
 
   // 2. Local override (if exists)
   const localPath = path.join(root, 'config.local.js');
@@ -90,6 +135,8 @@ export function loadConfig(baseDir?: string): ArachneConfig {
   if (!merged.projectDir) {
     merged.projectDir = process.cwd();
   }
-
+  merged.projectDir = fs.realpathSync(path.resolve(merged.projectDir));
+  if (merged.dbPath) merged.dbPath = path.resolve(merged.dbPath);
+  validateConfig(merged);
   return merged;
 }

@@ -1,502 +1,168 @@
-# ️ Arachne (n2-arachne)
+# Arachne 5.0
 
-[![npm version](https://img.shields.io/npm/v/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![npm downloads](https://img.shields.io/npm/dm/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
-[![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
+Code and document retrieval for AI agents, with owner-scoped storage in the common Soul SQLite database.
 
-**[한국어](README.ko.md)** | English | **[日本語](README.ja.md)**
+[한국어](README.ko.md) · [日本語](README.ja.md)
 
----
- **ARACHNE V4.0.0 TITANIUM EDITION** 
-> **1GB (1,000,000,000 Bytes) Codebase Search in 0.54 Seconds.**
-> _Powered by Zero-Marshaling Architecture. 0 Bytes JS Heap Bloat. No OOM Crashes._
----
+## Install
 
-> Weave your codebase into the perfect context for AI
+Use Node.js 20.19 or newer. Download `n2-arachne-5.0.0.tgz` from the GitHub release and install it into a dedicated tools directory.
 
-### What's New in v4.0 (Titanium Edition)
-
-Arachne has been completely rewritten from JS to strict **TypeScript**, with heavy computational paths natively rewritten in **C++ SIMD (sqlite-vec)** and **Rust (napi-rs)**.
-
-- `TypeScript (Strict)`: 100% type safety with zero runtime regressions.
-- `Rust Acceleration`: BM25 **1.3x faster** (memchr SIMD + rayon parallel); BatchCosine **19.9x faster** (96ms → 4.8ms).
-- `C++ SIMD Search`: sqlite-vec scans 10,000 × 768D vectors in just **25ms** natively.
-- `KV-Cache Integration`: Soul-bridge incremental re-indexing enables sub-second history load on start.
- — like Arachne, the greatest weaver of Greek mythology. ️
-
-##  The Problem — Why AI Gets Your Code Wrong
-
-Imagine going to a doctor and saying **"I have a headache."**
-
--  **Bad doctor**: reads your entire 500-page medical history, gets confused, prescribes the wrong medicine
--  **Good doctor**: looks at relevant records only — recent symptoms, medications, allergies — and nails the diagnosis
-
-**AI coding assistants are like that bad doctor.**
-
-When your project has 500 files, AI can't read them all. So what happens?
-
-```
- Your Project (500 files, 2M tokens)
-│
-├── auth/login.ts        ←  The bug is HERE
-├── auth/session.ts      ←  login imports this
-├── api/http.ts          ←  session imports this
-├── utils/config.ts      ← ️ timeout settings live here
-│
-├── pages/home.tsx       ←  completely irrelevant
-├── pages/about.tsx      ←  completely irrelevant
-├── components/Button.tsx ←  completely irrelevant
-└── ... 493 more files    ←  all irrelevant
+```sh
+npm install ./n2-arachne-5.0.0.tgz
+node node_modules/n2-arachne/dist/index.js --version
 ```
 
-| Approach | What AI receives | Result |
-|----------|-----------------|--------|
-|  Dump everything | 2,000,000 tokens | Exceeds context window, AI confused |
-|  Random files | ~50,000 tokens | Misses critical code, wrong fix |
-|  **Arachne** | **30,000 tokens** (4 relevant files) | Precise fix, every time |
+This version is distributed through GitHub. Check the version when installing through another registry. The tarball includes the Windows x64 document parser. Other platforms require Rust 1.98 and a platform C/C++ linker, then `npm run build:documents` inside the installed package. Source checkouts require `npm ci`, `npm run build:documents` and `npm run build`.
 
-> **Tokens** = units of text AI reads. More tokens = more cost, slower, less accurate.
-> AI has a limited "context window" — like a desk that can only hold so many papers.
+The package uses TypeScript search. Optional Rust acceleration and source builds are described in `native/README.md`.
 
-###  Real-World Benchmark (N2 Browser — 3,219 files)
+## MCP setup
 
-| Metric | Value |
-|--------|:-----:|
-| **Project size** | 3,219 files, **4.68M tokens** |
-| **Arachne output** | **14,074 tokens** |
-| **Compression** | **333x** (99.7% reduction) |
-| **Index time** | 627ms (incremental: 0ms) |
-| **DB size** | 24 MB |
-
-> *Measured on a real production project. Arachne delivered exactly what AI needed — 333x less data, same accuracy.*
-
----
-
-## ️ The Solution — Arachne Picks Exactly What AI Needs
-
-Arachne is a **local MCP server** that acts like that good doctor. It reads your entire codebase once, understands the structure, and **only sends what's relevant** to AI.
-
-```
-You: "Fix the login timeout bug"
-                │
-                ▼
-┌──────────────────────────────────────────────────────┐
-│  ️ Arachne: "I'll find exactly what you need"      │
-│                                                      │
-│  L1  Project tree (so AI knows the structure)      │
-│  L2  login.ts (the file you're working on)         │
-│  L3  http.ts, session.ts (found via search +       │
-│        dependency chain: login → session → http)     │
-│  L4 ️ config.ts (frequently accessed, has timeout)  │
-│                                                      │
-│  → 30,000 tokens of perfectly curated context        │
-└──────────────────────────────────────────────────────┘
-                │
-                ▼
-        AI generates accurate fix 
-```
-
-**No manual file selection. No prompt engineering. Just ask.**
-
----
-
-### Why Arachne?
-
--  **98.5% token savings** — 30K instead of 2M tokens. Real money saved on API calls
--  **Beats "Lost in the Middle"** — Smart output ordering (L1→L3→L4→L2) keeps critical code where AI pays attention ([research-backed](https://arxiv.org/abs/2307.03172))
--  **Zero external deps** — No Docker, no cloud, no API keys. Just `npm install` and go
--  **Blazing fast** — 21 files indexed in 12ms. Incremental updates in sub-second
--  **Ultralight** — Only 3 deps: `better-sqlite3`, `sqlite-vec`, `zod`. No bloat
-- **Free for personal/OSS** — Apache-2.0 for individuals and open-source projects. No telemetry
--  **Plug & play** — Add MCP config → done. Zero code changes to your project
--  **Multi-language** — Follows import chains across JS/TS, Python, Rust, Go, **Java**
--  **Ollama optional** — Works perfectly without Ollama (BM25 search). Add Ollama for bonus semantic search
-
-### Arachne in 4 Panels — Titanium Edition
-
-![Arachne V4.0 Titanium — AI drowning in 500 files, Titanium Spider arrives, scans 1GB in 0.54s, delivers 4 perfect files. 30K tokens, done.](docs/arachne-titanium-comic.png)
-
-###  Soul + Arachne Synergy
-
-![Soul remembers past sessions. Arachne finds the code. Together, AI never forgets and never misses.](docs/soul-synergy-comic.png)
-
-##  Key Features
-
-| Feature | Description |
-|---------|-------------|
-|  **MCP Standard** | Works with Claude, Gemini, GPT, Ollama — any AI provider |
-|  **Local-First** | All indexing in local SQLite. Zero data leaves your machine |
-|  **Incremental** | Only re-indexes changed files. Sub-second updates |
-|  **Hybrid Search** | BM25 keyword + semantic vector search (Ollama embeddings) |
-| ️ **4-Layer Assembly** | Smart context paging within token budget |
-|  **Dependency Graph** | Follows import chains across JS/TS, Python, Rust, Go, **Java** |
-| ️ **Backup & Restore** | SQLite online backup with in-backup search |
-
-## ️ Architecture: 4-Layer Context Assembly
-
-```
-┌─────────────────────────────────────────────┐
-│              Token Budget (e.g. 30K)        │
-├────────────┬────────────────────────────────┤
-│ L1: Fixed  │ File tree overview (10%)       │
-│ (always)   │ Project structure snapshot     │
-├────────────┼────────────────────────────────┤
-│ L2: Short  │ Current file + recent (20%)   │
-│ (context)  │ What you're working on now     │
-├────────────┼────────────────────────────────┤
-│ L3: Assoc  │ Search + dependencies (50%)  │
-│ (relevant) │ BM25 + semantic + dep chain   │
-├────────────┼────────────────────────────────┤
-│ L4: Spare  │ Frequently accessed (20%)     │
-│ (backup)   │ Files you use most            │
-└────────────┴────────────────────────────────┘
-
-Output order: L1 → L3 → L4 → L2  (mitigates "Lost in the Middle")
-```
-
-##  Semantic Search (Optional, Zero Lock-in)
-
-When Ollama is available, Arachne upgrades from keyword-only to **hybrid search**:
-
-```
-BM25 Score (keyword) ──┐
-                       ├── Weighted Merge (α=0.5) → Best Results
-Cosine Similarity ─────┘
-(nomic-embed-text 768D)
-```
-
-- **sqlite-vec** for SIMD-accelerated (AVX2/SSE2/Neon) KNN vector search
-- **768-dimensional** embeddings via Ollama `nomic-embed-text` — runs 100% local
-- **Graceful degradation**: No Ollama? Falls back to BM25-only. **Zero crashes. Always works.**
-- Enable in config: `embedding.enabled = true`
-- Vector storage: ~3KB per chunk. 5000 chunks = just 15MB on disk
-
-### Benchmark (v4.0)
-
-All benchmarks run on AMD Ryzen 5 5600G, Node v24, Windows x64.
-Three engines: **TypeScript** (V8 JIT), **Rust** (napi-rs), **sqlite-vec** (C++ SIMD).
-
-#### Search Performance (10,000 chunks / 768D vectors)
-
-| Search Mode | Engine | Performance | Notes |
-|-------------|--------|:-----------:|-------|
-| **Keyword** | 🦀 Rust BM25 (memchr + rayon) | **4.98 ms** / query | 1.3x faster than TS |
-| **Keyword** | SQLite LIKE | **0.021 ms** / query | DB index, fastest |
-| **Semantic KNN** | sqlite-vec (C++ SIMD) | **29.52 ms** / query | 10K × 768D in-DB native scan |
-| **Batch Cosine** | 🦀 Rust (napi-rs) | **4.91 ms** / query | *Legacy*: 22.3x faster, but triggers IPC heap spikes |
-
-#### Architecture Pivot: 1GB+ Scale Stability
-
-While **Rust BatchCosine** achieved blazing speeds (4.9ms), loading millions of vectors across the Node.js FFI boundary triggered massive V8 Garbage Collection (GC) pauses and Heap OOM crashes on 1GB+ codebases. 
-
-To achieve 100% stability on large-scale datasets, Arachne v4.0 enforces a **Zero-Marshaling Policy**:
-- **Semantic Search**: Delegated 100% to **sqlite-vec**. It takes ~29ms (slightly slower than Rust), but memory overhead is **0 bytes in JS**. The Node event loop remains completely unblocked.
-- **Keyword Search**: Powered by the **Rust BM25 Cache**. Chunk data is cached heavily in the Rust heap, crossing the FFI boundary only for small queries and resulting IDs.
-
-<details>
-<summary>Run benchmarks yourself</summary>
-
-```bash
-npm run build && node test/bench-hybrid-engine.js   # Raw engine comparison
-npm run build && node test/bench-10mb.js             # Memory scale impact
-```
-Results saved to `data-hybrid-bench/benchmark-report.json`.
-</details>
-
-
-##  Java Support — Built for Enterprise
-
-Arachne provides **first-class Java support**, designed for large-scale enterprise codebases (5M+ LOC):
-
-| Feature | Description |
-|---------|-------------|
-| **Smart Chunking** | Detects `class`, `interface`, `enum`, `method`, `@interface` (annotations) |
-| **Large Class Splitting** | Classes over 500 tokens are **automatically sub-chunked** into individual methods |
-| **Import Resolution** | Parses `import com.example.Service` and `import static org.junit.Assert.*` |
-| **Access Modifiers** | Handles `public`, `private`, `protected`, `abstract`, `final`, `synchronized` |
-| **Generics** | Correctly processes `<T extends Comparable<T>>` and complex generic types |
-| **Spring/JUnit** | Tested with Spring Boot `@RestController`, JUnit5 static imports, Mockito |
-| **Binary Exclusion** | Automatically ignores `.class`, `.jar`, `.war`, `.ear` files |
-
-### How Large Class Sub-Chunking Works
-
-```
-// 500+ token class → automatically split into methods
-public class UserService {       // ← detected as container
-    public User findById() {}    // ← sub-chunk 1
-    public List<User> findAll()  // ← sub-chunk 2
-    public User save() {}        // ← sub-chunk 3
-    // ... fields, constructor   // ← remainder chunk
-}
-
-// Small class (<500 tokens) → kept as single chunk (no overhead)
-public class TinyDTO { ... }     // ← single chunk, efficient
-```
-
->  **Why this matters for 5M LOC projects**: A single Java class can have 50+ methods spanning thousands of lines. Without sub-chunking, AI would receive the entire class as one blob. With Arachne, AI gets individual methods — enabling precise, targeted code generation.
-
-###  Token Impact: Less Is More
-
-```
-Without sub-chunking:
-  AI asks: "Fix the findById bug"
-  → BM25 hits UserService class
-  → Entire class sent: 6,000 tokens  
-
-With sub-chunking:
-  AI asks: "Fix the findById bug"
-  → BM25 hits findById() method only
-  → Just the method sent: 80 tokens    75x savings!
-```
-
-> Sub-chunking doesn't cost extra — it **saves** tokens by sending only what's relevant instead of entire classes.
-
-## ️ Stability: 128 Tests, Zero Failures
-
-Arachne is built for production. Every edge case is tested:
-
-| Category | What's Tested |
-|----------|---------------|
-|  SQL Injection | 5 attack patterns including Bobby Tables |
-| ️ Null/Empty Input | null, undefined, empty string → safe return |
-|  Huge Input | 10KB queries → no crash |
-|  Special Characters | Unicode, emoji, regex chars → handled |
-|  Ollama Disconnect | Bad endpoint → graceful BM25 fallback |
-|  Idempotency | Triple re-indexing → same result |
-|  Extreme Budgets | Budget 0, 1, 1M → all safe |
-|  Edge topK | topK = -1, 0, 99999 → no crash |
-|  Schema Safety | Triple init → data survives |
-
-```
-Phase 1 (Indexing/Search):    15/15 
-Phase 2 (Assembly/Deps):      26/26 
-Phase 2 (KV-Cache Bridge):   33/33 
-Phase 3 (Semantic/Hybrid):    10/10 
-Stability (Reddit-proof):     44/44 
-─────────────────────────────────────
-Total:                       128/128 
-```
-
-##  Installation
-
->  **Pro tip**: The best way to install? Just ask your AI agent: *"Install n2-arachne for me."* It knows what to do. ️
-
-```bash
-npm install n2-arachne
-```
-
-### MCP Config (Claude Desktop / Cursor / etc.)
+Use absolute paths appropriate for your machine.
 
 ```json
 {
   "mcpServers": {
-    "n2-arachne": {
+    "arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/dist/index.js"],
+      "args": ["/tools/node_modules/n2-arachne/dist/index.js"],
       "env": {
-        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
+        "N2_CONTEXT_PROJECT_DIR": "/projects/example",
+        "N2_CONTEXT_DATA_DIR": "/state/example-arachne",
+        "N2_CONTEXT_DB_PATH": "/state/soul/mimir.db",
+        "N2_PROJECT": "example",
+        "N2_AGENT_NAME": "assistant"
       }
     }
   }
 }
 ```
 
-##  Configuration
+On Windows, use paths such as `C:/tools/node_modules/n2-arachne/dist/index.js`. Keep a stable project/agent pair for each canonical source root. A registered owner rejects a different root.
 
-Create `config.local.js` in the Arachne directory:
+The server connects before automatic indexing and embedding checks finish. Use `status` to follow startup. While indexing, `search` and `assemble` return a progress error requesting a retry. Partial or interrupted scans remain visible across restarts.
 
-```javascript
-module.exports = {
-    projectDir: '/path/to/your/project',
-    dataDir: './data',
+### The `n2_arachne` tool
 
-    indexing: {
-        autoIndex: true,
-        maxFileSize: 512 * 1024,    // 512KB max per file
-    },
-
-    // Enable semantic search (requires Ollama)
-    embedding: {
-        enabled: true,              // default: false
-        provider: 'ollama',
-        model: 'nomic-embed-text',
-        endpoint: 'http://localhost:11434',
-    },
-
-    assembly: {
-        defaultBudget: 30000,       // tokens
-    },
-};
-```
-
-##  Usage (MCP Tool)
-
-Arachne registers a single MCP tool `n2_arachne` with these actions:
-
-| Action | Description |
-|--------|-------------|
-| `search` | BM25 keyword search (+ semantic if enabled) |
-| `assemble` | 4-Layer context assembly within token budget |
-| `index` | Index/re-index project files |
-| `status` | Show indexing stats + embedding status |
-| `files` | List indexed files |
-| `backup` | Create/list/restore backups |
-
-### Example: Assemble Context
-
-```json
-{
-  "action": "assemble",
-  "query": "HTTP request timeout error handling",
-  "activeFile": "lib/executor.js",
-  "budget": 20000
-}
-```
-
-##  Connect with Soul / QLN
-
-Arachne works great standalone, but becomes far more powerful with **Soul** (session memory) and **QLN** (tool routing).
-
-Setup is simple — just register them together in your MCP config:
-
-### Soul + Arachne Together
-
-```json
-{
-  "mcpServers": {
-    "n2-soul": {
-      "command": "node",
-      "args": ["/path/to/n2-soul/index.js"]
-    },
-    "n2-arachne": {
-      "command": "node",
-      "args": ["/path/to/n2-arachne/dist/index.js"],
-      "env": {
-        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
-      }
-    }
-  }
-}
-```
-
->  **Zero extra config needed!** Register both servers in the same MCP config and AI automatically uses both tools.
-> - `Soul` remembers past session work and decisions
-> - `Arachne` finds the exact code and delivers it to AI
-> - Result: AI picks up right where you left off — no "what was I working on?"
-
-### Full N2 Stack (Soul + Arachne + QLN)
-
-```json
-{
-  "mcpServers": {
-    "n2-soul": {
-      "command": "node",
-      "args": ["/path/to/n2-soul/index.js"]
-    },
-    "n2-arachne": {
-      "command": "node",
-      "args": ["/path/to/n2-arachne/dist/index.js"],
-      "env": {
-        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
-      }
-    },
-    "n2-qln": {
-      "command": "node",
-      "args": ["/path/to/n2-qln/index.js"]
-    }
-  }
-}
-```
-
-> Add QLN and even with 100+ MCP tools, AI automatically finds and uses only what it needs via QLN's semantic routing.
-
-##  N2 Ecosystem — Better Together
-
-| Package | Role | npm | Standalone |
-|---------|------|-----|:----------:|
-| **QLN** | Tool routing (1000+ tools → 1 router) | `n2-qln` |  |
-| **Soul** | Agent memory & session management | `n2-soul` |  |
-| **Ark** | Security policies & code verification | `n2-ark` |  |
-| **Arachne** | Code context auto-assembly ️ | `n2-arachne` |  |
-
-> Every package works **100% standalone**. But when combined, magic happens:
-
-###  Synergy: How They Work Together
-
-```
-User: "Fix the login timeout bug"
-     │
-     ▼
-┌─── QLN (Router) ──────────────────────────────────────┐
-│ 1000+ tools → Semantic routing finds:                 │
-│   → n2_arachne.assemble (context)                     │
-│   → n2_arachne.search (code search)                   │
-│ Token cost: 2 tool defs instead of 1000+              │
-└────────────────┬──────────────────────────────────────┘
-                 │
-                 ▼
-┌─── Arachne (Context) ─────────────────────────────────┐
-│ L1: Project tree overview                              │
-│ L2: auth/login.ts (current file)                       │
-│ L3: BM25 + semantic search → timeout-related code      │
-│     + dependency chain: login.ts → api.ts → http.ts    │
-│ L4: Frequently accessed config files                   │
-│ → 30K tokens of perfectly curated context              │
-└────────────────┬──────────────────────────────────────┘
-                 │
-                 ▼
-┌─── Soul (Memory) ─────────────────────────────────────┐
-│ "Last session, Rose fixed a similar timeout in         │
-│  api.ts line 47. Decision: increased to 30s."          │
-│ → Past context + decisions + handoff notes             │
-│ → KV-Cache: instant session restoration                │
-└────────────────┬──────────────────────────────────────┘
-                 │
-                 ▼
-┌─── Ark (Security) ────────────────────────────────────┐
-│  No hardcoded credentials in generated code          │
-│  Timeout value from config, not magic number         │
-│  Error handling follows project conventions           │
-│ → Code verification before commit                      │
-└───────────────────────────────────────────────────────┘
-```
-
-###  Solo vs Combined
-
-| Scenario | Solo | Combined |
-|----------|------|----------|
-| **Token usage** | AI sees all 1000+ tools | QLN routes → AI sees 2-3 tools |
-| **Context quality** | AI guesses which files matter | Arachne provides exact relevant code |
-| **Memory** | AI forgets everything each turn | Soul remembers past sessions + decisions |
-| **Code safety** | No guardrails | Ark validates before deploy |
-| **Setup** | Each tool works independently | Zero extra config — auto-detection |
-
-###  Real-World Impact
-
-- **QLN + Arachne**: QLN routes the request to Arachne → Arachne provides perfect context → AI generates accurate code on the first try. No more "which file was that in?"
-- **Soul + Arachne**: Soul remembers what you worked on last session → Arachne indexes those files with higher priority → continuity across sessions
-- **Ark + Arachne**: Arachne provides code context → AI generates code → Ark validates it follows project patterns. Catch bugs before they ship.
-- **All 4 together**: The AI becomes a team member who **remembers everything**, **finds anything**, **uses the right tools**, and **follows the rules**.
-
-##  License
-
-This project is dual-licensed:
-
-| Use Case | License | Cost |
+| Action | Purpose | Arguments |
 | --- | --- | --- |
-| Personal / Educational | Apache 2.0 | Free |
-| Open-source (non-commercial) | Apache 2.0 | Free |
-| Commercial / Enterprise | Commercial License | Contact us |
+| `index` | Incrementally index a root or subtree | `path`, `force` |
+| `search` | Keyword retrieval and optional snapshot search | `query`, `topK`, `language`, `searchBackups`, `backupId` |
+| `assemble` | Four context layers with optional hybrid retrieval | `query`, `activeFile`, `budget`, `layers` |
+| `status` | Index, vector, backup and scan status | — |
+| `files` | Paginated indexed files | `pattern`, `language`, `offset`, `limit` |
+| `health` | Dependency graph metrics and bounded samples | — |
+| `embed` | Generate missing or stale vectors | `topK` as batch limit |
+| `backup` | Checksummed owner snapshot | `label` |
+| `restore` | Transactional live owner restore | `backupId` |
+| `gc` | Retention for this owner's new snapshots | `maxAge`, `maxCount` |
 
-See [LICENSE](LICENSE) for full details.
+```json
+{"action":"assemble","query":"request cancellation","activeFile":"src/client.ts","budget":6000}
+```
 
-##  Star History
+Context allocation defaults to 10% project structure, 30% active source/dependencies, 40% retrieved code and 20% frequently accessed code. Headings, fences and truncation markers count toward the context estimate. `budget: 0` produces empty context. Estimates use configurable characters per token and can differ from model tokenization. The MCP diagnostic header is outside the context budget.
 
-No coffee? A star is fine too
+### Embeddings
 
-[![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
+Ollama embeddings are opt-in. Enable an available model with these environment variables.
 
----
+```json
+{
+  "N2_CONTEXT_EMBEDDING_ENABLED": "true",
+  "N2_CONTEXT_EMBEDDING_ENDPOINT": "http://127.0.0.1:11434",
+  "N2_CONTEXT_EMBEDDING_MODEL": "nomic-embed-text",
+  "N2_CONTEXT_EMBEDDING_TIMEOUT": "10000"
+}
+```
 
-*Arachne — the greatest weaver. Your code, perfectly woven.* ️
+Requests support `/api/embed` and the legacy `/api/embeddings` fallback after 404/405 responses. Each vector is tied to an owner, model, dimension and full chunk input hash. Provider failures preserve keyword retrieval and produce assembly diagnostics. Re-run `embed` until `complete: true`. Automatic indexing generates at most one batch of 64 chunks. Selected source text is sent to the configured endpoint. Optional credentials use `N2_CONTEXT_EMBEDDING_KEY`.
+
+## Common Soul storage
+
+`N2_CONTEXT_DB_PATH` selects the local SQLite file used by distribution Soul and Mimir. Standalone mode defaults to `<dataDir>/mimir.db` with identical columns. Every process sharing the WAL database should use SQLite 3.51.3 or newer. Arachne checks its own runtime version. Use a local filesystem with SQLite-compatible locking.
+
+Common schema version `meta.schema_version = 2` contains `experiences`, `insights`, `tags`, `embeddings`, `effect_tracking`, `experience_insight_links`, `insight_links`, `meta` and `tag_similarity`.
+
+Arachne owns `arachne_` tables for scopes, files, chunks, dependencies, access logs, vectors, sessions, snapshots, migration receipts and maintenance leases. Its version is `meta.arachne_schema_version = 1`. File columns include `path`, `hash`, `language`, `size_bytes`, `chunk_count`, `content`, `indexed_at`, `modified_at` and explicit `project`/`agent`. Numeric file/chunk IDs remain available. Document `source_hash` incorporates raw bytes, parser binary and indexing configuration. Child IDs are checked against ownership.
+
+Search filters ownership before limiting results. Restore replaces only the selected owner's Arachne records transactionally. Snapshots contain that owner's source text and session history. Soul/Mimir manage common experiences and insights. The host must authorize callers who can select owners or access the database file.
+
+### Upgrade from 4.x
+
+1. Stop the old process and retain a copy of its data directory.
+2. Point `N2_CONTEXT_DATA_DIR` to that directory. Set the intended project, agent and source root explicitly.
+3. Start 5.0. Legacy `context.db` imports transactionally into that owner in `mimir.db`. Existing common records and other owners are preserved. The legacy file remains available for rollback.
+4. Version 4 `arachne-kv.json` history imports after source-root validation. New history persists in SQLite.
+5. Run `index`, inspect `status`, then run `embed` as needed. Old sqlite-vec caches remain in the legacy database and new vectors are generated from current chunks.
+
+Receipts make retries idempotent. Initial import is synchronous and may require a longer client startup timeout for large databases. `Store.init()` and `Store.migrateLegacy()` support offline migration. Legacy snapshots remain available for validated search and restore. New retention applies to 5.0 owner snapshots. Future schemas, root mismatches and unscoped old Daebung tables produce explicit errors requiring an intentional migration.
+
+## Coverage and limits
+
+- JavaScript/TypeScript, Python, Rust, Go and Java use heuristic declaration chunking. Common JS/TS extension aliases are included. Other configured source/text formats use bounded windows.
+- Dependency extraction covers literal JS/TS, Rust, Python, Java, C/C++ and Go imports. Resolution is heuristic. Go package imports remain unresolved package references. Compiler aliases and dynamic expressions require application context.
+- Root `.gitignore` and `.contextignore` support Git-style rules. Default exclusions cover nested dependency/build directories. Nested ignore files are outside the current reader's scope. Symlink entries are skipped.
+- PDF, DOCX, PPTX and XLSX text extraction runs in a separate Rust worker. XLSX resolves actual shared/inline cells and cached formulas. OCR, password unlocking, formula recalculation and visual layout reproduction require external tools.
+- `health` reports directed edges, undirected relationships, unresolved imports, self references, components, hubs, isolated nodes and cyclic components. Cycle samples list component members.
+
+| Stage | Bound |
+| --- | --- |
+| Discovery | 100,000 entries, depth 64, configured file count, 120-second checks |
+| Source input | 1 MiB default, configurable through 10 MiB |
+| Document worker | 32 MiB input, two processes maximum, 256 MiB per-process budget, 20-second watchdog, 22-second parent timeout |
+| Document expansion | 32 MiB expanded, 8 MiB extracted text, 4,096 ZIP entries, 2,000 PDF pages |
+| Diagnostics | Approximately 1,000 issues per scan, first 20 displayed by MCP |
+| Search cache | 64 MiB estimated input, then scoped FTS5 retrieval |
+| Embedding response | 4 MiB, per-request timeout of 1–60,000 ms |
+| Embedding batch | 64 default, library maximum 256, 20-second check between requests |
+| Snapshot | 2 GiB, one million copied rows, 120-second copy checks |
+
+Checks bound individual stages. Request timeouts can extend an embedding batch beyond its between-request budget. Partial scans preserve unseen prior records and report incomplete coverage. Failed documents retain their previous index content. Review diagnostics when refreshing or narrowing a source selection.
+
+## Library
+
+```js
+const { Store, Indexer, BM25Search, Assembler } = require('n2-arachne');
+const config = structuredClone(require('n2-arachne/config.default.js'));
+const store = new Store('/state/example-arachne', {
+  dbPath: '/state/soul/mimir.db', project: 'example', agent: 'assistant',
+  projectRoot: '/projects/example'
+});
+async function retrieve() {
+  await store.init();
+  try {
+    const scan = await new Indexer(store, config).index(store.projectRoot);
+    if (!scan.complete) throw new Error(JSON.stringify(scan.issues));
+    const search = new BM25Search(store, config.search);
+    const assembler = new Assembler(store, search, {
+      ...config.assembly, tokenMultiplier: config.indexing.tokenMultiplier
+    });
+    return await assembler.assemble('request cancellation', { budget: 6000 });
+  } finally { store.close(); }
+}
+retrieve().then(console.log).catch(console.error);
+```
+
+Imports have no server or storage side effects. `node <package-directory>` and `n2-arachne` start MCP. `--help` and `--version` work before configuration.
+
+## Configuration and validation
+
+The loader merges package `config.default.js`, optional package-local `config.local.js`, then environment values. Relative data/backup directories resolve against the package directory. Use absolute paths in deployments. `N2_DATA_DIR` aliases the data directory. Additional environment settings include `N2_CONTEXT_AUTO_INDEX`, `N2_CONTEXT_MAX_FILES`, `N2_CONTEXT_BUDGET`, `N2_CONTEXT_BACKUP_DIR`, `N2_CONTEXT_EXTERNAL_BACKUP` and `N2_ARACHNE_DOCUMENT_WORKER` for a custom parser executable.
+
+Historical `integrations` fields are retained for caller compatibility. Shared storage uses DB path and owner settings. External policy and orchestration belong to the host.
+
+```sh
+npm ci
+npm run build:documents
+npm test
+cargo +1.98.0 test --locked --manifest-path document-worker/Cargo.toml --jobs 2
+cargo +1.98.0 test --locked --manifest-path native/Cargo.toml --jobs 2
+```
+
+Tests cover actual MCP calls, cancellation/retry, restarted persistence, shared ownership, legacy import, rollback, snapshots, document formats and provider failures. Local Windows verification exercises the included parser. CI runs source checks on Windows, Linux and macOS. Consult the release commit's run for platform results. Two OS resource-limit FFI blocks require manual unsafe-code review alongside static checks.
+
+## License
+
+The existing LICENSE specifies non-commercial/personal/educational usage terms and a separate commercial license. Read those terms before deployment. Attribution, imported-component MIT notices and parser dependency notices are included. [License](LICENSE) · [Source and dependency notices](THIRD-PARTY-NOTICES)

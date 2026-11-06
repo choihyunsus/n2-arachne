@@ -1,82 +1,136 @@
-// Language-aware code chunking in Rust
+// Bounded structural helpers for source chunking. The TypeScript chunker owns language patterns.
+use napi::{Error, Result};
 use napi_derive::napi;
 
-/// A single code chunk extracted from source
-#[napi(object)]
-pub struct RustChunk {
-    /// Chunk type (function, class, method, module, etc.)
-    pub chunk_type: String,
-    /// Name of the chunk (function/class name, or null)
-    pub name: Option<String>,
-    /// 1-indexed start line
-    pub start_line: i64,
-    /// 1-indexed end line
-    pub end_line: i64,
-    /// Chunk content
-    pub content: String,
-    /// Estimated token count
-    pub token_count: i64,
-}
+const MAX_SOURCE_BYTES: usize = 10 * 1024 * 1024;
 
-/// Fast token estimation (~3.5 chars per token for English code)
 #[napi]
-pub fn estimate_tokens_rs(text: String, multiplier: f64) -> i64 {
-    if text.is_empty() {
-        return 0;
+pub fn estimate_tokens_rs(text: String, multiplier: f64) -> Result<i64> {
+    if !multiplier.is_finite()
+        || !(0.25..=16.0).contains(&multiplier)
+        || text.len() > MAX_SOURCE_BYTES
+    {
+        return Err(Error::from_reason(
+            "Invalid token multiplier or oversized source",
+        ));
     }
-    let m = if multiplier > 0.0 { multiplier } else { 3.5 };
-    (text.len() as f64 / m).ceil() as i64
+    Ok((text.encode_utf16().count() as f64 / multiplier).ceil() as i64)
 }
 
-/// Find brace-matched block end starting from a given line index
-#[napi]
-pub fn find_block_end_rs(lines: Vec<String>, start_idx: i64) -> i64 {
-    let start = start_idx as usize;
-    let mut depth: i32 = 0;
-    let mut found = false;
+fn validate_lines(lines: &[String]) -> Result<()> {
+    if lines.len() > 1_000_000 || lines.iter().map(String::len).sum::<usize>() > MAX_SOURCE_BYTES {
+        return Err(Error::from_reason(
+            "Source line collection exceeds scanner limits",
+        ));
+    }
+    Ok(())
+}
 
-    for i in start..lines.len() {
-        let line = &lines[i];
-        for ch in line.chars() {
-            if ch == '{' {
-                depth += 1;
-                found = true;
-            }
-            if ch == '}' {
-                depth -= 1;
+#[derive(Default)]
+struct BraceState {
+    depth: i32,
+    found: bool,
+    quote: Option<char>,
+    comment: bool,
+}
+
+impl BraceState {
+    fn consume(&mut self, line: &str) -> bool {
+        let mut chars = line.chars().peekable();
+        while let Some(ch) = chars.next() {
+            if self.comment {
+                if ch == '*' && chars.peek() == Some(&'/') {
+                    chars.next();
+                    self.comment = false;
+                }
+            } else if let Some(quote) = self.quote {
+                if ch == '\\' {
+                    chars.next();
+                } else if ch == quote {
+                    self.quote = None;
+                }
+            } else if ch == '/' && chars.peek() == Some(&'/') {
+                break;
+            } else if ch == '/' && chars.peek() == Some(&'*') {
+                chars.next();
+                self.comment = true;
+            } else if ['"', '\'', '`'].contains(&ch) {
+                self.quote = Some(ch);
+            } else if ch == '{' {
+                self.depth += 1;
+                self.found = true;
+            } else if ch == '}' {
+                self.depth -= 1;
+            } else if ch == ';' && !self.found {
+                return true;
             }
         }
-        if found && depth <= 0 {
-            return i as i64;
-        }
+        self.found && self.depth <= 0
     }
-    (lines.len() - 1) as i64
 }
 
-/// Find indentation-based block end (for Python)
 #[napi]
-pub fn find_indent_end_rs(lines: Vec<String>, start_idx: i64) -> i64 {
-    let start = start_idx as usize;
-    if start >= lines.len().saturating_sub(1) {
-        return start as i64;
+pub fn find_block_end_rs(lines: Vec<String>, start_idx: i64) -> Result<i64> {
+    validate_lines(&lines)?;
+    if start_idx < 0 || start_idx as usize >= lines.len() {
+        return Ok(-1);
     }
+    let mut state = BraceState::default();
+    for (index, line) in lines.iter().enumerate().skip(start_idx as usize) {
+        if state.consume(line) {
+            return Ok(index as i64);
+        }
+    }
+    Ok((lines.len() - 1) as i64)
+}
 
-    let base_indent = count_leading_spaces(&lines[start]);
-
-    for i in (start + 1)..lines.len() {
-        let line = &lines[i];
+#[napi]
+pub fn find_indent_end_rs(lines: Vec<String>, start_idx: i64) -> Result<i64> {
+    validate_lines(&lines)?;
+    if start_idx < 0 || start_idx as usize >= lines.len() {
+        return Ok(-1);
+    }
+    let start = start_idx as usize;
+    let base_indent = indentation(&lines[start]);
+    for (index, line) in lines.iter().enumerate().skip(start + 1) {
         if line.trim().is_empty() {
             continue;
         }
-        let indent = count_leading_spaces(line);
-        if indent <= base_indent {
-            return (i - 1) as i64;
+        if indentation(line) <= base_indent {
+            return Ok((index - 1) as i64);
         }
     }
-    (lines.len() - 1) as i64
+    Ok((lines.len() - 1) as i64)
 }
 
-/// Count leading whitespace characters
-fn count_leading_spaces(s: &str) -> usize {
-    s.chars().take_while(|c| c.is_whitespace()).count()
+fn indentation(line: &str) -> usize {
+    line.chars()
+        .take_while(|character| character.is_whitespace())
+        .count()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn checks_empty_input_unicode_and_multiplier() {
+        assert_eq!(find_block_end_rs(vec![], 0).unwrap(), -1);
+        assert_eq!(find_indent_end_rs(vec!["x".into()], -1).unwrap(), -1);
+        assert_eq!(estimate_tokens_rs("😀".into(), 1.0).unwrap(), 2);
+        assert!(estimate_tokens_rs("text".into(), f64::INFINITY).is_err());
+    }
+    #[test]
+    fn quoted_and_commented_braces_do_not_end_blocks() {
+        let lines = [
+            "function example() {",
+            "const quoted = \"}\";",
+            "/* } */",
+            "return `}`;",
+            "}",
+        ];
+        assert_eq!(
+            find_block_end_rs(lines.map(str::to_string).to_vec(), 0).unwrap(),
+            4
+        );
+    }
 }

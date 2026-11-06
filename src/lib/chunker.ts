@@ -1,45 +1,65 @@
 // Split source code into function/class-level chunks
 // Phase 1: Regex-based (no parser needed), Phase 2: AST replacement possible
 import type { ChunkRecord, ChunkPattern, SupportedLanguage } from '../types';
+import { maskSource } from './source-mask';
+import { splitWindows } from './chunk-windows';
 
 // Default: ~3.5 chars/token for English code
 let _tokenMultiplier = 3.5;
 
 // Chunk analysis constants
-const MAX_SEARCH_IDENTIFIERS = 50;
-const MIN_CHUNK_CHAR_LENGTH = 50;
-const MIN_CHUNK_TOKEN_COUNT = 30;
 
 /**
  * Set token multiplier (called from config)
  */
 export function setTokenMultiplier(multiplier: number): void {
-  if (typeof multiplier === 'number' && multiplier > 0) {
-    _tokenMultiplier = multiplier;
-  }
+  validateMultiplier(multiplier);
+  _tokenMultiplier = multiplier;
 }
 
 /**
  * Estimate token count (configurable via tokenMultiplier)
  */
-export function estimateTokens(text: string, _language?: string): number {
-  return Math.ceil(text.length / _tokenMultiplier);
+export function estimateTokens(
+  text: string,
+  _language?: string,
+  multiplier = _tokenMultiplier,
+): number {
+  validateMultiplier(multiplier);
+  return Math.ceil(text.length / multiplier);
+}
+
+function validateMultiplier(multiplier: number): void {
+  if (!Number.isFinite(multiplier) || multiplier < 0.25 || multiplier > 16)
+    throw new Error('Token multiplier must be between 0.25 and 16');
 }
 
 // Language-specific chunk detection patterns
 const CHUNK_PATTERNS: Record<SupportedLanguage, ChunkPattern[]> = {
   js: [
-    { type: 'function', regex: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/m },
+    {
+      type: 'function',
+      regex: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/m,
+    },
     { type: 'class', regex: /^(?:export\s+)?class\s+(\w+)/m },
-    { type: 'arrow', regex: /^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(?/m },
+    {
+      type: 'arrow',
+      regex: /^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*=\s*(?:async\s+)?\(?/m,
+    },
     { type: 'method', regex: /^\s+(?:async\s+)?(\w+)\s*\([^)]*\)\s*\{/m },
   ],
   ts: [
-    { type: 'function', regex: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/m },
+    {
+      type: 'function',
+      regex: /^(?:export\s+)?(?:async\s+)?function\s+(\w+)/m,
+    },
     { type: 'class', regex: /^(?:export\s+)?class\s+(\w+)/m },
     { type: 'interface', regex: /^(?:export\s+)?interface\s+(\w+)/m },
     { type: 'type', regex: /^(?:export\s+)?type\s+(\w+)/m },
-    { type: 'arrow', regex: /^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*[=:]/m },
+    {
+      type: 'arrow',
+      regex: /^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*[=:]/m,
+    },
     { type: 'method', regex: /^\s+(?:async\s+)?(\w+)\s*\([^)]*\)\s*[:{]/m },
   ],
   py: [
@@ -59,18 +79,37 @@ const CHUNK_PATTERNS: Record<SupportedLanguage, ChunkPattern[]> = {
     { type: 'interface', regex: /^type\s+(\w+)\s+interface/m },
   ],
   java: [
-    { type: 'class', regex: /^(?:public\s+|private\s+|protected\s+)?(?:abstract\s+|final\s+)?class\s+(\w+)/m },
-    { type: 'interface', regex: /^(?:public\s+|private\s+|protected\s+)?interface\s+(\w+)/m },
-    { type: 'enum', regex: /^(?:public\s+|private\s+|protected\s+)?enum\s+(\w+)/m },
-    { type: 'method', regex: /^\s+(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:synchronized\s+)?(?:final\s+)?(?:abstract\s+)?(?:\w+(?:<[^>]+>)?\s+)(\w+)\s*\(/m },
+    {
+      type: 'class',
+      regex: /^(?:public\s+|private\s+|protected\s+)?(?:abstract\s+|final\s+)?class\s+(\w+)/m,
+    },
+    {
+      type: 'interface',
+      regex: /^(?:public\s+|private\s+|protected\s+)?interface\s+(\w+)/m,
+    },
+    {
+      type: 'enum',
+      regex: /^(?:public\s+|private\s+|protected\s+)?enum\s+(\w+)/m,
+    },
+    {
+      type: 'method',
+      regex:
+        /^\s+(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:synchronized\s+)?(?:final\s+)?(?:abstract\s+)?(?:\w+(?:<[^>]+>)?\s+)(\w+)\s*\(/m,
+    },
     { type: 'annotation', regex: /^(?:public\s+)?@interface\s+(\w+)/m },
   ],
 };
 
 // Extension → language key mapping
 export const LANG_MAP: Record<string, SupportedLanguage> = {
-  js: 'js', jsx: 'js', mjs: 'js', cjs: 'js',
-  ts: 'ts', tsx: 'ts', mts: 'ts',
+  js: 'js',
+  jsx: 'js',
+  mjs: 'js',
+  cjs: 'js',
+  ts: 'ts',
+  tsx: 'ts',
+  mts: 'ts',
+  cts: 'ts',
   py: 'py',
   rs: 'rs',
   go: 'go',
@@ -87,8 +126,14 @@ function findBlockEnd(lines: string[], startIdx: number): number {
   for (let i = startIdx; i < lines.length; i++) {
     const line = lines[i]!;
     for (const ch of line) {
-      if (ch === '{') { depth++; found = true; }
-      if (ch === '}') { depth--; }
+      if (ch === '{') {
+        depth++;
+        found = true;
+      }
+      if (ch === '}') {
+        depth--;
+      }
+      if (!found && ch === ';') return i;
     }
     if (found && depth <= 0) {
       return i;
@@ -121,26 +166,39 @@ function findIndentEnd(lines: string[], startIdx: number): number {
  * Build search text for BM25
  */
 function buildSearchText(name: string | null, content: string, type: string): string {
-  const parts: string[] = [type];
-  if (name) parts.push(name);
-  // Extract identifiers from code (alphanumeric + _)
-  const identifiers = content.match(/[a-zA-Z_]\w{2,}/g) ?? [];
-  const unique = [...new Set(identifiers)];
-  parts.push(...unique.slice(0, MAX_SEARCH_IDENTIFIERS));
-  return parts.join(' ').toLowerCase();
+  return [type, name ?? '', content].join(' ').toLowerCase();
+}
+
+function makeChunk(
+  content: string,
+  type: string,
+  name: string | null,
+  startLine: number,
+  endLine: number,
+  multiplier: number,
+): ChunkRecord {
+  return {
+    type,
+    name,
+    startLine,
+    endLine,
+    content,
+    tokenCount: estimateTokens(content, undefined, multiplier),
+    searchText: buildSearchText(name, content, type),
+  };
 }
 
 /**
  * Create whole-file chunk (for unsupported languages or match failure)
  */
-function makeWholeFileChunk(content: string): ChunkRecord {
+function makeWholeFileChunk(content: string, multiplier: number): ChunkRecord {
   return {
     type: 'module',
     name: null,
     startLine: 1,
     endLine: content.split('\n').length,
     content,
-    tokenCount: estimateTokens(content),
+    tokenCount: estimateTokens(content, undefined, multiplier),
     searchText: buildSearchText(null, content, 'module'),
   };
 }
@@ -149,34 +207,32 @@ function makeWholeFileChunk(content: string): ChunkRecord {
  * Match methods inside a container and return sub-chunks
  */
 function matchMethods(
-  lines: string[], start: number, end: number,
-  methodPatterns: ChunkPattern[], lang: string,
+  lines: string[],
+  masked: string[],
+  start: number,
+  end: number,
+  methodPatterns: ChunkPattern[],
+  lang: string,
+  multiplier: number,
 ): { chunks: ChunkRecord[]; usedLines: Set<number> } {
   const subChunks: ChunkRecord[] = [];
   const subUsed = new Set<number>();
 
   for (let i = start + 1; i <= end; i++) {
     if (subUsed.has(i)) continue;
-    const line = lines[i]!;
+    const line = masked[i]!;
 
     for (const pattern of methodPatterns) {
       const match = line.match(pattern.regex);
       if (!match) continue;
 
-      const name = match[1] ?? null;
-      let endIdx = lang === 'py' ? findIndentEnd(lines, i) : findBlockEnd(lines, i);
+      const name = match[1] && match[1].length <= 512 ? match[1] : null;
+      let endIdx = lang === 'py' ? findIndentEnd(masked, i) : findBlockEnd(masked, i);
       endIdx = Math.min(endIdx, end);
-      if (endIdx - i < 2) continue;
 
       for (let j = i; j <= endIdx; j++) subUsed.add(j);
       const chunkContent = lines.slice(i, endIdx + 1).join('\n');
-      subChunks.push({
-        type: pattern.type, name,
-        startLine: i + 1, endLine: endIdx + 1,
-        content: chunkContent,
-        tokenCount: estimateTokens(chunkContent),
-        searchText: buildSearchText(name, chunkContent, pattern.type),
-      });
+      subChunks.push(makeChunk(chunkContent, pattern.type, name, i + 1, endIdx + 1, multiplier));
       break;
     }
   }
@@ -184,39 +240,34 @@ function matchMethods(
 }
 
 /**
- * Build remainder chunk from unused lines in a container
- */
-function buildRemainderChunk(
-  lines: string[], start: number, end: number, usedLines: Set<number>,
-): ChunkRecord | null {
-  const remainderLines: string[] = [];
-  for (let i = start; i <= end; i++) {
-    if (!usedLines.has(i)) remainderLines.push(lines[i]!);
-  }
-  const content = remainderLines.join('\n').trim();
-  if (content.length <= MIN_CHUNK_CHAR_LENGTH || estimateTokens(content) <= MIN_CHUNK_TOKEN_COUNT) return null;
-
-  return {
-    type: 'module', name: null,
-    startLine: start + 1, endLine: end + 1,
-    content, tokenCount: estimateTokens(content),
-    searchText: buildSearchText(null, content, 'module'),
-  };
-}
-
-/**
  * Extract method-level sub-chunks from a container (class/struct/impl)
  * For large containers (>500 tokens), splits into individual methods + remainder
  */
 function extractSubChunks(
-  lines: string[], containerStart: number, containerEnd: number,
-  methodPatterns: ChunkPattern[], lang: string,
+  lines: string[],
+  masked: string[],
+  containerStart: number,
+  containerEnd: number,
+  patterns: ChunkPattern[],
+  lang: string,
+  multiplier: number,
 ): ChunkRecord[] {
-  const { chunks, usedLines } = matchMethods(lines, containerStart, containerEnd, methodPatterns, lang);
+  const methodPatterns = patterns.filter(
+    (pattern) => pattern.type === 'method' || pattern.type === 'function',
+  );
+  if (methodPatterns.length === 0) return [];
+  const { chunks, usedLines } = matchMethods(
+    lines,
+    masked,
+    containerStart,
+    containerEnd,
+    methodPatterns,
+    lang,
+    multiplier,
+  );
   if (chunks.length === 0) return [];
 
-  const remainder = buildRemainderChunk(lines, containerStart, containerEnd, usedLines);
-  if (remainder) chunks.push(remainder);
+  chunks.push(...collectRemainder(lines, usedLines, multiplier, containerStart, containerEnd));
 
   return chunks;
 }
@@ -225,7 +276,11 @@ function extractSubChunks(
  * Match chunk patterns against source lines
  */
 function matchChunks(
-  lines: string[], patterns: ChunkPattern[], lang: string,
+  lines: string[],
+  masked: string[],
+  patterns: ChunkPattern[],
+  lang: string,
+  multiplier: number,
 ): { chunks: ChunkRecord[]; usedLines: Set<number> } {
   const chunks: ChunkRecord[] = [];
   const usedLines = new Set<number>();
@@ -233,35 +288,29 @@ function matchChunks(
 
   for (let i = 0; i < lines.length; i++) {
     if (usedLines.has(i)) continue;
-    const line = lines[i]!;
+    const line = masked[i]!;
 
     for (const pattern of patterns) {
       const match = line.match(pattern.regex);
       if (!match) continue;
 
-      const name = match[1] ?? null;
-      const endIdx = lang === 'py' ? findIndentEnd(lines, i) : findBlockEnd(lines, i);
-      if (endIdx - i < 2) continue;
+      const name = match[1] && match[1].length <= 512 ? match[1] : null;
+      const endIdx = lang === 'py' ? findIndentEnd(masked, i) : findBlockEnd(masked, i);
 
       for (let j = i; j <= endIdx; j++) usedLines.add(j);
       const chunkContent = lines.slice(i, endIdx + 1).join('\n');
-      const tokenCount = estimateTokens(chunkContent);
+      const tokenCount = estimateTokens(chunkContent, undefined, multiplier);
 
       // Sub-chunk large containers
       if (containerTypes.has(pattern.type) && tokenCount > 500) {
-        const methodPatterns = patterns.filter(p => p.type === 'method' || p.type === 'function');
-        if (methodPatterns.length > 0) {
-          const subChunks = extractSubChunks(lines, i, endIdx, methodPatterns, lang);
-          if (subChunks.length > 0) { chunks.push(...subChunks); break; }
+        const subChunks = extractSubChunks(lines, masked, i, endIdx, patterns, lang, multiplier);
+        if (subChunks.length > 0) {
+          chunks.push(...subChunks);
+          break;
         }
       }
 
-      chunks.push({
-        type: pattern.type, name,
-        startLine: i + 1, endLine: endIdx + 1,
-        content: chunkContent, tokenCount,
-        searchText: buildSearchText(name, chunkContent, pattern.type),
-      });
+      chunks.push(makeChunk(chunkContent, pattern.type, name, i + 1, endIdx + 1, multiplier));
       break;
     }
   }
@@ -271,11 +320,17 @@ function matchChunks(
 /**
  * Collect uncovered lines as remainder "module" chunks
  */
-function collectRemainder(lines: string[], usedLines: Set<number>): ChunkRecord[] {
+function collectRemainder(
+  lines: string[],
+  usedLines: Set<number>,
+  multiplier: number,
+  start = 0,
+  end = lines.length - 1,
+): ChunkRecord[] {
   const uncovered: Array<{ start: number; end: number }> = [];
   let rangeStart: number | null = null;
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = start; i <= end; i++) {
     if (!usedLines.has(i)) {
       if (rangeStart === null) rangeStart = i;
     } else if (rangeStart !== null) {
@@ -283,16 +338,19 @@ function collectRemainder(lines: string[], usedLines: Set<number>): ChunkRecord[
       rangeStart = null;
     }
   }
-  if (rangeStart !== null) uncovered.push({ start: rangeStart, end: lines.length - 1 });
+  if (rangeStart !== null) uncovered.push({ start: rangeStart, end });
 
   const chunks: ChunkRecord[] = [];
   for (const range of uncovered) {
-    const content = lines.slice(range.start, range.end + 1).join('\n').trim();
-    if (content.length > MIN_CHUNK_CHAR_LENGTH && estimateTokens(content) > MIN_CHUNK_TOKEN_COUNT) {
+    const content = lines.slice(range.start, range.end + 1).join('\n');
+    if (content.trim()) {
       chunks.push({
-        type: 'module', name: null,
-        startLine: range.start + 1, endLine: range.end + 1,
-        content, tokenCount: estimateTokens(content),
+        type: 'module',
+        name: null,
+        startLine: range.start + 1,
+        endLine: range.end + 1,
+        content,
+        tokenCount: estimateTokens(content, undefined, multiplier),
         searchText: buildSearchText(null, content, 'module'),
       });
     }
@@ -303,17 +361,28 @@ function collectRemainder(lines: string[], usedLines: Set<number>): ChunkRecord[
 /**
  * Split source code into chunks
  */
-export function chunkCode(content: string, language: string): ChunkRecord[] {
-  const lang = LANG_MAP[language] ?? language;
-  const patterns = CHUNK_PATTERNS[lang as SupportedLanguage];
-  if (!patterns) return [makeWholeFileChunk(content)];
+export function chunkCode(
+  content: string,
+  language: string,
+  multiplier = _tokenMultiplier,
+): ChunkRecord[] {
+  validateMultiplier(multiplier);
+  if (typeof content !== 'string' || content.length > 10485760)
+    throw new Error('Source exceeds the 10 MiB character limit');
+  const lang = Object.hasOwn(LANG_MAP, language) ? LANG_MAP[language]! : language;
+  const patterns = Object.hasOwn(CHUNK_PATTERNS, lang)
+    ? CHUNK_PATTERNS[lang as SupportedLanguage]
+    : undefined;
+  if (!patterns) return splitWindows(makeWholeFileChunk(content, multiplier), multiplier);
 
   const lines = content.split('\n');
-  const { chunks, usedLines } = matchChunks(lines, patterns, lang);
-  const remainder = collectRemainder(lines, usedLines);
+  const masked = maskSource(content, lang).split('\n');
+  const { chunks, usedLines } = matchChunks(lines, masked, patterns, lang, multiplier);
+  const remainder = collectRemainder(lines, usedLines, multiplier);
   const all = [...chunks, ...remainder].sort((a, b) => a.startLine - b.startLine);
 
-  return all.length > 0 ? all : [makeWholeFileChunk(content)];
+  const selected = all.length > 0 ? all : [makeWholeFileChunk(content, multiplier)];
+  return selected.flatMap((chunk) => splitWindows(chunk, multiplier));
 }
 
 /**

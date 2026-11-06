@@ -1,442 +1,120 @@
-# ️ Arachne (n2-arachne)
+# Arachne 5.0
 
-[![npm version](https://img.shields.io/npm/v/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![npm downloads](https://img.shields.io/npm/dm/n2-arachne.svg)](https://www.npmjs.com/package/n2-arachne)
-[![Node](https://img.shields.io/badge/node-%3E%3D18-green.svg)](https://nodejs.org)
+AI 에이전트가 필요한 소스와 문서를 검색하고 작업 문맥을 조립하는 모듈입니다. 배포판 Soul과 같은 SQLite 파일을 사용하며 프로젝트와 에이전트별로 데이터를 구분합니다.
 
-한국어 | **[English](README.md)** | **[日本語](README.ja.md)**
+[English](README.md) · [日本語](README.ja.md)
 
-> 거미줄처럼 코드를 엮어 AI에게 최적의 컨텍스트를 조립하는 MCP 서버
+## 설치
 
-### v4.0 주요 업데이트 (Titanium Edition)
+Node.js 20.19 이상을 사용하세요. GitHub 릴리스의 `n2-arachne-5.0.0.tgz`를 도구 전용 폴더에 내려받아 설치합니다. 이번 버전의 배포 경로는 GitHub입니다. 다른 레지스트리에서는 설치 버전을 확인하세요.
 
-Arachne가 기존 순수 JS 기반에서 엄격한 **TypeScript**로 전면 재작성되었으며, 무거운 계산은 **C++ SIMD(sqlite-vec)**와 **Rust(napi-rs)** 네이티브 코드로 가속됩니다.
-
-- `TypeScript (Strict)`: 100% 타입 안정성 확보 및 런타임 오류 제로화.
-- `Rust 네이티브 가속`: rayon 기반 병렬 스캔 및 구문 분석으로 데이터 처리 구간 최대 1.9배 가속.
-- `C++ SIMD 검색`: sqlite-vec 확장을 통한 하이브리드 검색으로 1만 개 벡터를 27ms 만에 정밀 탐색.
-- `KV-Cache 통합`: 과거 세션 정보를 즉시 로딩하여 프로젝트 전수 재조사 없이 0초 만에 증분 인덱싱 완료.
- ️
-
-##  문제 — AI가 내 코드를 왜 틀리게 짜는 걸까?
-
-병원에 가서 **"머리가 아파요"** 라고 말했다고 해봅시다.
-
--  **나쁜 의사**: 500페이지짜리 전체 진료기록을 다 읽고, 혼란스러워하며, 엉뚱한 약을 처방
--  **좋은 의사**: 관련 기록만 확인 — 최근 증상, 복용 약, 알레르기 — 정확히 진단
-
-**AI 코딩 어시스턴트가 바로 그 나쁜 의사입니다.**
-
-프로젝트에 파일이 500개 있으면, AI가 전부 읽을 수 없거든요. 그럼 무슨 일이 벌어질까요?
-
-```
- 내 프로젝트 (파일 500개, 토큰 200만개)
-│
-├── auth/login.ts        ←  버그가 여기에 있음
-├── auth/session.ts      ←  login이 이걸 import함
-├── api/http.ts          ←  session이 이걸 import함
-├── utils/config.ts      ← ️ 타임아웃 설정값이 여기에
-│
-├── pages/home.tsx       ←  완전히 관계없음
-├── pages/about.tsx      ←  완전히 관계없음
-├── components/Button.tsx ←  완전히 관계없음
-└── ... 나머지 493개      ←  전부 관계없음
+```sh
+npm install ./n2-arachne-5.0.0.tgz
+node node_modules/n2-arachne/dist/index.js --version
 ```
 
-| 방법 | AI가 받는 양 | 결과 |
-|------|------------|------|
-|  전부 던지기 | 토큰 2,000,000개 | 컨텍스트 초과, AI 혼란 |
-|  아무 파일이나 | ~50,000 토큰 | 핵심 코드 누락, 잘못된 수정 |
-|  **Arachne** | **30,000 토큰** (관련 파일 4개만) | 정확한 수정, 매번 |
+Windows x64 문서 파서가 포함됩니다. 다른 운영체제는 Rust 1.98과 해당 플랫폼 링커를 준비한 뒤 패키지 폴더에서 `npm run build:documents`를 실행하세요. 소스 체크아웃은 `npm ci`, `npm run build:documents`, `npm run build` 순으로 준비합니다.
 
-> **토큰**이란? AI가 읽는 텍스트의 단위. 토큰이 많을수록 = 비용 증가, 속도 저하, 정확도 감소.
-> AI에는 한계가 있는 "컨텍스트 윈도우"가 있습니다 — 책상 위에 올릴 수 있는 서류 양에 한계가 있는 것처럼.
+## MCP 연결
 
----
-
-## ️ 해결 — Arachne가 AI에게 딱 필요한 것만 골라줍니다
-
-Arachne는 좋은 의사처럼 작동하는 **로컬 MCP 서버**입니다. 코드베이스를 한 번 읽고, 구조를 이해한 뒤, **관련된 코드만** AI에게 전달합니다.
-
-```
-사용자: "로그인 타임아웃 버그 고쳐줘"
-                │
-                ▼
-┌───────────────────────────────────────────────────────┐
-│  ️ Arachne: "딱 필요한 코드만 골라줄게"              │
-│                                                       │
-│  L1  파일 트리 (AI가 전체 구조를 파악하도록)          │
-│  L2  login.ts (지금 작업 중인 파일)                  │
-│  L3  http.ts, session.ts (검색 + 의존성 체인으로 발견 │
-│        login → session → http)                        │
-│  L4 ️ config.ts (자주 접근, 타임아웃 설정 포함)       │
-│                                                       │
-│  → 완벽하게 큐레이션된 30,000 토큰                     │
-└───────────────────────────────────────────────────────┘
-                │
-                ▼
-        AI가 정확한 수정 코드 생성 
-```
-
-**파일을 직접 골라줄 필요 없음. 프롬프트 엔지니어링 불필요. 그냥 물어보세요.**
-
----
-
-### 왜 Arachne인가?
-
--  **토큰 98.5% 절약** — 200만 대신 3만 토큰. API 비용 실제 절감
--  **"Lost in the Middle" 극복** — 스마트 출력 순서(L1→L3→L4→L2)로 AI가 집중하는 위치에 핵심 코드 배치 ([논문 근거](https://arxiv.org/abs/2307.03172))
--  **제로 외부 의존** — Docker 없음, 클라우드 없음, API 키 불필요. `npm install`이면 끝
--  **초고속** — 21개 파일 인덱싱 12ms. 증분 업데이트는 밀리초 단위
--  **초경량** — 의존성 3개: `better-sqlite3`, `sqlite-vec`, `zod`. 그게 전부
-- 🆓 **100% 무료 & 오픈소스** — Apache-2.0, 숨겨진 비용 없음, 텔레메트리 없음
--  **플러그 앤 플레이** — MCP 설정 추가 → 끝. 프로젝트 코드 수정 불필요
--  **다국어 지원** — JS/TS, Python, Rust, Go, **Java** import 체인 자동 분석
--  **Ollama 선택사항** — Ollama 없이도 완벽 동작(BM25 검색). Ollama 추가하면 시맨틱 검색 보너스
-
-### ️ Arachne 4컷 만화
-
-![Arachne란? — AI가 파일 500개를 받으면 버그를 못 찾는다. Arachne가 관련 파일 4개만 골라준다. 3만 토큰, 매번 정확한 수정.](docs/arachne-comic.png)
-
-###  Soul + Arachne 시너지
-
-![Soul은 이전 세션을 기억한다. Arachne는 코드를 찾는다. 합치면 AI가 절대 잊지 않고, 절대 놓치지 않는다.](docs/soul-synergy-comic.png)
-
-##  핵심 특징
-
-| 기능 | 설명 |
-|------|------|
-|  **MCP 표준** | Claude, Gemini, GPT, Ollama — 어떤 AI든 OK |
-|  **로컬 퍼스트** | 모든 인덱싱이 로컬 SQLite. 외부 전송 제로 |
-|  **증분 인덱싱** | 변경된 파일만 업데이트. 초 단위 갱신 |
-|  **하이브리드 검색** | BM25 키워드 + 시맨틱 벡터 검색 (Ollama 임베딩) |
-| ️ **4-Layer 조립** | 토큰 예산 내에서 스마트 컨텍스트 페이징 |
-|  **의존성 그래프** | JS/TS, Python, Rust, Go, **Java** import 체인 추적 |
-| ️ **백업 & 복구** | SQLite 온라인 백업 + 백업 내 검색 |
-
-## ️ 아키텍처: 4-Layer 컨텍스트 조립
-
-```
-┌─────────────────────────────────────────────┐
-│              토큰 예산 (예: 30K)              │
-├────────────┬────────────────────────────────┤
-│ L1: Fixed  │ 파일 트리 개요 (10%)            │
-│ (고정)      │ 프로젝트 구조 스냅샷            │
-├────────────┼────────────────────────────────┤
-│ L2: Short  │ 현재 파일 + 최근 (20%)          │
-│ (단기)      │ 지금 작업 중인 파일              │
-├────────────┼────────────────────────────────┤
-│ L3: Assoc  │ 검색 + 의존성 (50%)            │
-│ (연관)      │ BM25 + 시맨틱 + 의존성 체인     │
-├────────────┼────────────────────────────────┤
-│ L4: Spare  │ 자주 접근한 파일 (20%)           │
-│ (예비)      │ 가장 많이 쓰는 파일              │
-└────────────┴────────────────────────────────┘
-
-출력 순서: L1 → L3 → L4 → L2  ("Lost in the Middle" 방지)
-```
-
-##  시맨틱 검색 (선택, 제로 록인)
-
-Ollama가 있으면 키워드 전용에서 **하이브리드 검색**으로 자동 업그레이드:
-
-```
-BM25 스코어 (키워드) ──┐
-                       ├── 가중 합산 (α=0.5) → 최적 결과
-코사인 유사도 ──────────┘
-(nomic-embed-text 768D)
-```
-
-- **sqlite-vec**: SIMD 가속(AVX2/SSE2/Neon) KNN 벡터 검색
-- **768차원** 임베딩 — Ollama `nomic-embed-text`로 100% 로컬 처리
-- **Graceful degradation**: Ollama 없으면 BM25-only로 폴백. **크래시 제로. 항상 동작.**
-- 설정: `embedding.enabled = true`로 활성화
-- 벡터 저장: 청크당 ~3KB. 5000청크 = 디스크 15MB
-
-##  Java 지원 — 엔터프라이즈급 대규모 프로젝트 대응
-
-Arachne는 대규모 엔터프라이즈 코드베이스(5M+ LOC)를 위한 **Java 일급 지원**을 제공합니다:
-
-| 기능 | 설명 |
-|------|------|
-| **스마트 청킹** | `class`, `interface`, `enum`, `method`, `@interface` (어노테이션) 자동 감지 |
-| **대형 클래스 분할** | 500토큰 이상의 클래스는 **메서드 단위로 자동 분할** |
-| **Import 해석** | `import com.example.Service` 및 `import static org.junit.Assert.*` 지원 |
-| **접근 제어자** | `public`, `private`, `protected`, `abstract`, `final`, `synchronized` 처리 |
-| **제네릭** | `<T extends Comparable<T>>` 등 복잡한 제네릭 타입 정상 처리 |
-| **Spring/JUnit** | Spring Boot `@RestController`, JUnit5 static import, Mockito 테스트 완료 |
-| **바이너리 제외** | `.class`, `.jar`, `.war`, `.ear` 파일 자동 제외 |
-
-### 대형 클래스 분할 동작 원리
-
-```
-// 500+ 토큰 클래스 → 메서드 단위로 자동 분할
-public class UserService {       // ← 컨테이너로 감지
-    public User findById() {}    // ← sub-chunk 1
-    public List<User> findAll()  // ← sub-chunk 2
-    public User save() {}        // ← sub-chunk 3
-    // ... 필드, 생성자          // ← 나머지 청크
-}
-
-// 작은 클래스 (<500 토큰) → 단일 청크로 유지 (오버헤드 없음)
-public class TinyDTO { ... }     // ← 단일 청크, 효율적
-```
-
->  **5M LOC 프로젝트에서 이게 중요한 이유**: Java 클래스 하나가 50개+ 메서드와 수천 줄에 달할 수 있습니다. sub-chunking 없이는 AI가 클래스 전체를 한 덩어리로 받습니다. Arachne는 개별 메서드를 제공하여 정밀하고 타겟된 코드 생성을 가능하게 합니다.
-
-###  토큰 절약: 적을수록 정확하다
-
-```
-Sub-chunking 없이:
-  AI: "findById 버그 고쳐줘"
-  → BM25 검색 → UserService 클래스 hit
-  → 클래스 통째로 전달: 6,000 토큰  
-
-Sub-chunking 사용:
-  AI: "findById 버그 고쳐줘"
-  → BM25 검색 → findById() 메서드만 hit
-  → 메서드만 전달: 80 토큰    75배 절약!
-```
-
-> Sub-chunking은 추가 비용이 없습니다 — 클래스 전체 대신 **필요한 메서드만** 보내서 오히려 토큰을 **절약**합니다.
-
-## ️ 안정성: 104개 테스트, 실패 제로
-
-Arachne는 프로덕션용입니다. 모든 엣지 케이스가 테스트됨:
-
-| 카테고리 | 테스트 내용 |
-|----------|------------|
-|  SQL 인젝션 | Bobby Tables 포함 5종 공격 패턴 방어 |
-| ️ Null/빈 입력 | null, undefined, 빈 문자열 → 안전 반환 |
-|  거대 입력 | 10KB 쿼리 → 크래시 없음 |
-|  특수문자 | 유니코드, 이모지, 정규식 문자 → 처리됨 |
-|  Ollama 끊김 | 잘못된 엔드포인트 → BM25 폴백 |
-|  멱등성 | 3회 연속 인덱싱 → 동일 결과 |
-|  극단적 예산 | 예산 0, 1, 100만 → 전부 안전 |
-|  Edge topK | topK = -1, 0, 99999 → 크래시 없음 |
-|  스키마 안전 | 3회 연속 init → 데이터 무사 |
-
-```
-Phase 1 (인덱싱/검색):       15/15 
-Phase 2 (조립/의존성):        26/26 
-Phase 3 (시맨틱/하이브리드):   19/19 
-Stability (Reddit-proof):    44/44 
-─────────────────────────────────────
-총합:                       104/104 
-```
-
-##  설치
-
->  **꿀팁**: 최고의 설치 방법은? 당신의 AI 에이전트에게 부탁하세요: *"n2-arachne 설치해줘."* 알아서 다 해줍니다. ️
-
-```bash
-npm install n2-arachne
-```
-
-### MCP 설정 (Claude Desktop / Cursor 등)
+경로를 실제 설치 위치로 바꾸어 MCP 클라이언트에 등록합니다.
 
 ```json
 {
   "mcpServers": {
-    "n2-arachne": {
+    "arachne": {
       "command": "node",
-      "args": ["/path/to/n2-arachne/dist/index.js"],
+      "args": ["C:/tools/node_modules/n2-arachne/dist/index.js"],
       "env": {
-        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
+        "N2_CONTEXT_PROJECT_DIR": "C:/projects/example",
+        "N2_CONTEXT_DATA_DIR": "C:/state/example-arachne",
+        "N2_CONTEXT_DB_PATH": "C:/state/soul/mimir.db",
+        "N2_PROJECT": "example",
+        "N2_AGENT_NAME": "assistant"
       }
     }
   }
 }
 ```
 
-##  설정
+프로젝트·에이전트 이름은 계속 같은 값으로 사용하세요. 한 소유자 조합은 하나의 정규화된 소스 루트에 연결됩니다. 다른 루트를 같은 조합에 연결하면 오류를 반환합니다. 자동 색인과 임베딩 점검은 MCP 연결 후 진행되며 `status`로 확인합니다. 색인 중 검색과 문맥 조립은 완료 후 재시도를 안내합니다. 부분 처리와 중단 기록은 재시작한 뒤에도 표시됩니다.
 
-Arachne 디렉토리에 `config.local.js` 생성:
+## 기능
 
-```javascript
-module.exports = {
-    projectDir: '/path/to/your/project',
-    dataDir: './data',
+`n2_arachne` 도구의 `action`으로 실행합니다.
 
-    indexing: {
-        autoIndex: true,
-        maxFileSize: 512 * 1024,    // 파일당 최대 512KB
-    },
+| 작업 | 기능 | 주요 인자 |
+| --- | --- | --- |
+| `index` | 전체 또는 하위 경로 증분 색인 | `path`, `force` |
+| `search` | 키워드·백업 검색 | `query`, `topK`, `language`, `searchBackups`, `backupId` |
+| `assemble` | 4개 계층의 문맥 조립 | `query`, `activeFile`, `budget`, `layers` |
+| `status` | 색인·벡터·백업 상태 | — |
+| `files` | 파일 목록과 페이지 조회 | `pattern`, `language`, `offset`, `limit` |
+| `health` | 의존성 그래프 통계 | — |
+| `embed` | 누락되거나 낡은 벡터 생성 | 배치 크기로 사용할 `topK` |
+| `backup` | 소유자별 체크섬 백업 | `label` |
+| `restore` | 실행 중인 DB의 소유자별 복원 | `backupId` |
+| `gc` | 새 백업 보관 정책 | `maxAge`, `maxCount` |
 
-    // 시맨틱 검색 (Ollama 필요)
-    embedding: {
-        enabled: true,              // 기본: false
-        provider: 'ollama',
-        model: 'nomic-embed-text',
-        endpoint: 'http://localhost:11434',
-    },
-
-    assembly: {
-        defaultBudget: 30000,       // 토큰
-    },
-};
+```json
+{"action":"assemble","query":"요청 취소 처리","activeFile":"src/client.ts","budget":6000}
 ```
 
-##  사용법 (MCP 도구)
+문맥의 기본 배분은 프로젝트 구조 10%, 현재 파일과 의존성 30%, 관련 검색 결과 40%, 자주 참조한 소스 20%입니다. 제목·코드 울타리·생략 표시도 예산에 포함합니다. 토큰 수는 문자 기반 추정이므로 모델별 실제 토큰 수와 차이가 있습니다. MCP 상태 설명은 문맥 예산 밖에 있습니다. `budget: 0`이면 조립 문맥은 비어 있습니다.
 
-Arachne는 `n2_arachne` MCP 도구를 등록합니다:
+## Soul 공통 DB
 
-| 액션 | 설명 |
-|------|------|
-| `search` | BM25 키워드 검색 (+ 시맨틱) |
-| `assemble` | 4-Layer 컨텍스트 조립 |
-| `index` | 프로젝트 파일 인덱싱/재인덱싱 |
-| `status` | 인덱싱 통계 + 임베딩 상태 |
-| `files` | 인덱싱된 파일 목록 |
-| `backup` | 백업 생성/목록/복원 |
+`N2_CONTEXT_DB_PATH`에 배포판 Soul과 Mimir가 사용하는 로컬 SQLite 파일을 지정합니다. 단독 기본 경로는 `<dataDir>/mimir.db`이며 필드 구조가 같습니다. WAL DB를 공유하는 모든 프로세스에서 SQLite 3.51.3 이상을 사용하세요. 자신의 런타임 버전은 실행 시 검사합니다.
 
-### 예시: 컨텍스트 조립
+공통 버전은 `meta.schema_version = 2`입니다. 공통 테이블은 `experiences`, `insights`, `tags`, `embeddings`, `effect_tracking`, `experience_insight_links`, `insight_links`, `meta`, `tag_similarity`입니다. Arachne는 `arachne_` 접두사의 파일·청크·의존성·이력·벡터·백업·잠금 테이블을 관리하며 `meta.arachne_schema_version = 1`을 사용합니다. 파일은 `project`/`agent`로 구분하고 기존 경로·해시·언어·크기·청크·내용·시간 필드를 유지합니다.
+
+검색은 소유자 필터를 적용한 뒤 결과 개수를 제한합니다. 백업에는 해당 소유자의 소스와 이력이 들어가며 복원은 그 소유자의 Arachne 데이터에 적용됩니다. 공통 경험과 통찰은 Soul/Mimir가 관리합니다. DB 접근 권한과 소유자를 선택하는 호출자의 권한은 호스트에서 관리하세요.
+
+### 4.x에서 이전
+
+1. 기존 프로세스를 종료하고 데이터 폴더 사본을 보관합니다.
+2. `N2_CONTEXT_DATA_DIR`에 기존 폴더를 지정하고 프로젝트·에이전트·소스 루트를 명시합니다.
+3. 5.0을 시작하면 `context.db`를 새 `mimir.db`의 지정 소유자에 트랜잭션으로 복사합니다. 공통 데이터·다른 소유자·기존 파일을 보존합니다.
+4. 버전 4 `arachne-kv.json`은 루트를 확인한 뒤 이력을 복사합니다. 이후 이력은 SQLite에 저장합니다.
+5. `index`와 `status`를 확인하고, 임베딩 사용 시 `embed`를 반복해 `complete: true`를 확인합니다.
+
+이전 영수증으로 중복 복사를 방지합니다. 최초 복사는 MCP 연결 전에 실행되므로 큰 DB는 클라이언트 시작 제한 시간을 늘리거나 라이브러리 `Store.init()`/`Store.migrateLegacy()`로 먼저 이전할 수 있습니다. 기존 벡터는 기존 DB에 남으며 새 벡터를 생성합니다. 과거 백업도 검증 후 검색·복원할 수 있습니다. 새 보관 정책은 5.0의 백업에 적용됩니다. 미래 버전·루트 불일치·과거 대붕이의 소유자 없는 테이블은 명시적 이전이 필요합니다.
+
+## 임베딩과 처리 한도
+
+임베딩 기본값은 꺼짐입니다. Ollama 사용 시 아래 설정을 추가하세요. 선택한 청크가 지정한 서버로 전송됩니다. 서버 오류는 문맥 조립 응답에 표시되며 키워드 검색은 계속 사용할 수 있습니다.
 
 ```json
 {
-  "action": "assemble",
-  "query": "HTTP 요청 타임아웃 에러 처리",
-  "activeFile": "lib/executor.js",
-  "budget": 20000
+  "N2_CONTEXT_EMBEDDING_ENABLED": "true",
+  "N2_CONTEXT_EMBEDDING_ENDPOINT": "http://127.0.0.1:11434",
+  "N2_CONTEXT_EMBEDDING_MODEL": "nomic-embed-text",
+  "N2_CONTEXT_EMBEDDING_TIMEOUT": "10000"
 }
 ```
 
-##  Soul / QLN 연동하기
+- JS/TS·Python·Rust·Go·Java는 선언 패턴으로 청크를 나눕니다. 다른 텍스트 형식은 제한된 구간으로 처리합니다. 의존성은 휴리스틱이며 컴파일러 별칭과 동적 표현식에 한계가 있습니다. Go 패키지는 미해결 패키지 참조로 기록됩니다.
+- 루트 `.gitignore`와 `.contextignore`를 읽습니다. 기본 제외 규칙은 중첩 의존성·빌드 폴더에도 적용합니다. 하위 ignore 파일을 별도로 읽는 기능은 현재 범위 밖입니다. 심볼릭 링크 항목은 건너뜁니다.
+- PDF·DOCX·PPTX·XLSX를 별도 Rust 프로세스에서 읽습니다. XLSX는 실제 셀과 공유 문자열·캐시된 수식을 해석합니다. OCR·암호 해제·수식 재계산·시각적 배치는 외부 도구가 필요합니다.
+- 문서는 입력 32 MiB, 추출 8 MiB, 확장 32 MiB, 프로세스 256 MiB, 자체 20초 제한을 적용합니다. 상위 프로세스는 22초에 종료를 요청합니다. ZIP 4,096항목·PDF 2,000쪽 제한이 있습니다.
+- 소스 파일은 기본 1 MiB, 설정 최대 10 MiB입니다. 탐색은 10만 항목·64단계·120초 검사로 제한합니다. 오류는 약 1,000개까지 수집하고 MCP에는 앞의 20개를 표시합니다.
+- 임베딩은 기본 64개 배치이며 요청 사이에 20초 예산을 확인합니다. 개별 요청 제한 시간이 더해질 수 있습니다. HTTP 응답은 4 MiB로 제한합니다. 자동 색인 후 벡터 생성은 한 배치까지 실행합니다.
+- 백업은 최대 2 GiB·100만 행·120초 복사 검사를 적용합니다. 부분 색인은 미확인 기존 파일을 보존하고 실패한 문서는 기존 색인을 유지하며 진단을 제공합니다.
 
-Arachne는 독립 실행도 되지만, **Soul**(세션 기억)이나 **QLN**(도구 라우팅)과 함께 쓰면 훨씬 강력합니다.
+## 설정과 검증
 
-연동 방법은 간단합니다 — MCP 설정에 같이 등록하면 끝!
+패키지 `config.default.js`, 선택적인 `config.local.js`, 환경 변수 순으로 합칩니다. 상대 데이터·백업 경로는 패키지 위치 기준이므로 운영 시 절대 경로를 사용하세요. `N2_DATA_DIR`은 공통 데이터 경로 별칭입니다. 기존 `integrations` 객체는 호출자 호환성을 위해 남아 있으며 실제 연결은 DB 경로와 소유자 설정을 사용합니다. 영문 README에 라이브러리 예제와 전체 설정이 있습니다.
 
-### Soul + Arachne 함께 쓰기
-
-```json
-{
-  "mcpServers": {
-    "n2-soul": {
-      "command": "node",
-      "args": ["/path/to/n2-soul/index.js"]
-    },
-    "n2-arachne": {
-      "command": "node",
-      "args": ["/path/to/n2-arachne/dist/index.js"],
-      "env": {
-        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
-      }
-    }
-  }
-}
+```sh
+npm ci
+npm run build:documents
+npm test
+cargo +1.98.0 test --locked --manifest-path document-worker/Cargo.toml --jobs 2
+cargo +1.98.0 test --locked --manifest-path native/Cargo.toml --jobs 2
 ```
 
->  **추가 설정 필요 없음!** 두 서버를 같은 MCP 설정에 등록하면, AI가 자동으로 양쪽 도구를 사용합니다.
-> - `Soul`이 이전 세션의 작업 내용과 결정을 기억
-> - `Arachne`가 해당 코드를 정확하게 찾아서 AI에게 전달
-> - 결과: AI가 "지난번에 뭐 했더라?" 없이 바로 이어서 작업
+실제 MCP 호출, 취소·재시도, 재시작 복원, 소유자 격리, 이전·백업·롤백, 문서와 임베딩 오류를 검증합니다. 로컬 Windows 검증은 포함된 파서를 사용합니다. 플랫폼별 결과는 해당 릴리스 커밋의 Windows·Linux·macOS CI 실행에서 확인하세요. OS 자원 제한 FFI 두 곳은 정적 검사와 별도로 수동 검토합니다.
 
-### 전체 N2 스택 (Soul + Arachne + QLN)
+## 사용 조건
 
-```json
-{
-  "mcpServers": {
-    "n2-soul": {
-      "command": "node",
-      "args": ["/path/to/n2-soul/index.js"]
-    },
-    "n2-arachne": {
-      "command": "node",
-      "args": ["/path/to/n2-arachne/dist/index.js"],
-      "env": {
-        "ARACHNE_PROJECT_DIR": "/path/to/your/project"
-      }
-    },
-    "n2-qln": {
-      "command": "node",
-      "args": ["/path/to/n2-qln/index.js"]
-    }
-  }
-}
-```
-
-> QLN까지 더하면, MCP 도구가 100개+ 있어도 AI는 QLN을 통해 필요한 도구만 자동으로 찾아 사용합니다.
-
-##  N2 에코시스템 — 함께 쓰면 더 강력
-
-| 패키지 | 역할 | npm | 독립실행 |
-|--------|------|-----|:-------:|
-| **QLN** | 도구 라우팅 (1000+ 도구 → 1 라우터) | `n2-qln` |  |
-| **Soul** | 에이전트 기억 & 세션 관리 | `n2-soul` |  |
-| **Ark** | 보안 정책 & 코드 검증 | `n2-ark` |  |
-| **Arachne** | 코드 컨텍스트 자동 조립 ️ | `n2-arachne` |  |
-
-> 모든 패키지는 **100% 독립 실행** 가능. 하지만 합치면 마법이 일어남:
-
-###  시너지: 실제 동작 흐름
-
-```
-사용자: "로그인 타임아웃 버그 고쳐줘"
-     │
-     ▼
-┌─── QLN (라우터) ──────────────────────────────────────┐
-│ 1000+ 도구 → 시맨틱 라우팅으로 자동 선별:             │
-│   → n2_arachne.assemble (컨텍스트 조립)               │
-│   → n2_arachne.search (코드 검색)                     │
-│ 토큰 비용: 1000+개 도구 대신 2개만 AI에 전달          │
-└────────────────┬──────────────────────────────────────┘
-                 │
-                 ▼
-┌─── Arachne (컨텍스트) ────────────────────────────────┐
-│ L1: 프로젝트 트리 개요                                 │
-│ L2: auth/login.ts (현재 작업 파일)                     │
-│ L3: BM25 + 시맨틱 검색 → 타임아웃 관련 코드            │
-│     + 의존성 체인: login.ts → api.ts → http.ts         │
-│ L4: 자주 접근한 설정 파일                              │
-│ → 30K 토큰의 완벽하게 큐레이션된 컨텍스트              │
-└────────────────┬──────────────────────────────────────┘
-                 │
-                 ▼
-┌─── Soul (기억) ───────────────────────────────────────┐
-│ "지난 세션에서 로제가 api.ts 47번 줄의 비슷한          │
-│  타임아웃을 수정함. 결정: 30초로 증가."                 │
-│ → 과거 컨텍스트 + 결정 사항 + 핸드오프 노트            │
-│ → KV-Cache: 즉시 세션 복원                             │
-└────────────────┬──────────────────────────────────────┘
-                 │
-                 ▼
-┌─── Ark (보안) ────────────────────────────────────────┐
-│  생성된 코드에 하드코딩된 자격증명 없음              │
-│  타임아웃 값은 config에서 로드 (매직넘버 금지)       │
-│  에러 처리가 프로젝트 컨벤션 준수                    │
-│ → 커밋 전 코드 검증                                    │
-└───────────────────────────────────────────────────────┘
-```
-
-###  단독 vs 통합
-
-| 시나리오 | 단독 사용 | 통합 사용 |
-|----------|----------|----------|
-| **토큰 사용량** | AI가 1000+ 도구 전부 봄 | QLN이 라우팅 → AI는 2~3개만 |
-| **컨텍스트 품질** | AI가 어떤 파일이 중요한지 추측 | Arachne가 정확한 관련 코드 제공 |
-| **기억** | AI는 매 턴 전부 잊음 | Soul이 과거 세션 + 결정 기억 |
-| **코드 안전** | 가드레일 없음 | Ark가 배포 전 검증 |
-| **설정** | 각 도구 독립 동작 | 추가 설정 불필요 — 자동 연동 |
-
-###  실전 임팩트
-
-- **QLN + Arachne**: QLN이 요청을 Arachne로 라우팅 → Arachne가 완벽한 컨텍스트 제공 → AI가 첫 시도에 정확한 코드 생성. "그 파일이 어디였더라?" 끝.
-- **Soul + Arachne**: Soul이 지난 세션 작업 내용 기억 → Arachne가 해당 파일을 우선 인덱싱 → 세션 간 연속성 보장
-- **Ark + Arachne**: Arachne가 코드 컨텍스트 제공 → AI가 코드 생성 → Ark가 프로젝트 패턴 준수 검증. 버그를 배포 전에 잡음.
-- **4개 전부**: AI가 **모든 걸 기억하고**, **무엇이든 찾고**, **올바른 도구를 쓰고**, **규칙을 따르는** 팀원이 됨.
-
-##  라이선스
-
-Apache-2.0
-
-##  Star History
-
-Arachne가 도움이 되셨다면, 별 하나 부탁드립니다! 
-
-[![Star History Chart](https://api.star-history.com/svg?repos=choihyunsus/n2-arachne&type=Date)](https://star-history.com/#choihyunsus/n2-arachne&Date)
-
----
-
-*Arachne — 그리스 신화 최고의 직조사. 코드의 실을 엮어 완벽한 맥락을 짜냅니다.* ️
+기존 LICENSE에는 비상업·개인·교육 목적 사용 조건과 별도 상업 라이선스가 규정되어 있습니다. 이식 코드의 MIT 고지와 파서 의존성 고지를 함께 제공합니다. [라이선스](LICENSE) · [출처와 의존성 고지](THIRD-PARTY-NOTICES)

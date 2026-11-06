@@ -1,405 +1,478 @@
-// SQLite DB management (schema creation, migration, basic queries)
-import path from 'path';
-import fs from 'fs';
+// Scoped SQLite access for Arachne in the distribution Soul database.
+import path from 'node:path';
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import Database from 'better-sqlite3';
+import { initializeSchema, ARACHNE_SCHEMA_VERSION } from './schema';
+import { importLegacy, type LegacyImportResult } from './legacy-import';
+import {
+  integer,
+  text,
+  relativePath,
+  scopeName,
+  fileRow,
+  chunkRow,
+  validateChunk,
+  dependencyRow,
+  accessRow,
+} from './store-values';
 import type {
-  ChunkRecord, ChunkRow, FileRow, UpsertResult,
-  DependencyRow, AccessLogRow, StoreStats, ResolvedDep,
+  ChunkRecord,
+  ChunkRow,
+  FileRow,
+  UpsertResult,
+  DependencyRow,
+  AccessLogRow,
+  StoreStats,
+  ResolvedDep,
 } from '../types';
 
-const SCHEMA_VERSION = 3;
-
-const SCHEMA_SQL = `
--- Meta information (version, project path, etc.)
-CREATE TABLE IF NOT EXISTS meta (
-    key TEXT PRIMARY KEY,
-    value TEXT,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- File index
-CREATE TABLE IF NOT EXISTS files (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    path TEXT UNIQUE NOT NULL,
-    hash TEXT NOT NULL,
-    language TEXT,
-    size_bytes INTEGER,
-    chunk_count INTEGER DEFAULT 0,
-    indexed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    modified_at DATETIME
-);
-
--- Code chunks (function/class/block level)
-CREATE TABLE IF NOT EXISTS chunks (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-    chunk_type TEXT NOT NULL,
-    name TEXT,
-    start_line INTEGER NOT NULL,
-    end_line INTEGER NOT NULL,
-    content TEXT NOT NULL,
-    token_count INTEGER NOT NULL,
-    search_text TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Search indexes
-CREATE INDEX IF NOT EXISTS idx_chunks_file ON chunks(file_id);
-CREATE INDEX IF NOT EXISTS idx_files_path ON files(path);
-CREATE INDEX IF NOT EXISTS idx_files_language ON files(language);
-`;
-
-const SCHEMA_V2_SQL = `
--- Dependency graph (import/require relationships)
-CREATE TABLE IF NOT EXISTS dependencies (
-    source_file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-    target_path TEXT NOT NULL,
-    target_file_id INTEGER REFERENCES files(id) ON DELETE SET NULL,
-    dep_type TEXT DEFAULT 'import',
-    PRIMARY KEY (source_file_id, target_path)
-);
-
--- Access history (track frequently used files)
-CREATE TABLE IF NOT EXISTS access_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    file_id INTEGER NOT NULL REFERENCES files(id) ON DELETE CASCADE,
-    query TEXT,
-    accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_deps_source ON dependencies(source_file_id);
-CREATE INDEX IF NOT EXISTS idx_deps_target ON dependencies(target_file_id);
-CREATE INDEX IF NOT EXISTS idx_access_file ON access_log(file_id);
-CREATE INDEX IF NOT EXISTS idx_access_time ON access_log(accessed_at);
-`;
-
-const SCHEMA_V3_SQL = `
-CREATE TABLE IF NOT EXISTS embeddings_meta (
-    chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
-    model TEXT DEFAULT 'nomic-embed-text',
-    dimensions INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-`;
+export interface StoreOptions {
+  dbPath?: string;
+  project?: string;
+  agent?: string;
+  projectRoot?: string;
+  importLegacy?: boolean;
+}
+const CHUNKS =
+  'SELECT c.*,f.path AS file_path,f.language FROM arachne_chunks c JOIN arachne_files f ON f.id=c.file_id';
+const MAX_QUERY_ITEMS = 10_000;
+const FILES =
+  'SELECT id,project,agent,path,hash,source_hash,language,size_bytes,chunk_count,indexed_at,modified_at FROM arachne_files';
 
 export class Store {
-  private readonly _dataDir: string;
-  private readonly _dbPath: string;
-  private readonly _backupDir: string;
-  private _db: Database.Database | null = null;
+  readonly project: string;
+  readonly agent: string;
+  readonly projectRoot: string;
+  readonly dbPath: string;
+  readonly backupDir: string;
+  readonly legacyPath: string;
+  legacyImport: LegacyImportResult | null = null;
+  private readonly autoImportLegacy: boolean;
+  private connection: Database.Database | null = null;
 
-  constructor(dataDir: string) {
-    this._dataDir = dataDir;
-    this._dbPath = path.join(dataDir, 'context.db');
-    this._backupDir = path.join(dataDir, 'backups');
+  constructor(dataDir: string, options: StoreOptions = {}) {
+    this.projectRoot = fs.realpathSync(path.resolve(options.projectRoot ?? process.cwd()));
+    this.project = scopeName(
+      options.project ?? process.env.N2_PROJECT ?? path.basename(this.projectRoot),
+    );
+    this.agent = scopeName(options.agent ?? process.env.N2_AGENT_NAME ?? 'assistant');
+    this.dbPath = path.resolve(options.dbPath ?? path.join(dataDir, 'mimir.db'));
+    this.legacyPath = path.resolve(dataDir, 'context.db');
+    this.autoImportLegacy = options.importLegacy ?? true;
+    const scope = createHash('sha256')
+      .update(JSON.stringify([this.project, this.agent]))
+      .digest('hex')
+      .slice(0, 32);
+    this.backupDir = path.resolve(dataDir, 'arachne-backups', scope);
   }
 
-  /** Initialize DB (create directories + apply schema) */
   async init(): Promise<void> {
-    fs.mkdirSync(this._dataDir, { recursive: true });
-    fs.mkdirSync(this._backupDir, { recursive: true });
-
-    this._db = new Database(this._dbPath);
-    this._db.pragma('journal_mode = WAL');
-    this._db.pragma('foreign_keys = ON');
-    this._db.exec(SCHEMA_SQL);
-    this._migrate();
-    this._setMeta('schema_version', String(SCHEMA_VERSION));
-    this._setMeta('created_at', new Date().toISOString());
-  }
-
-  /** Migration (v1→v2→v3) */
-  private _migrate(): void {
-    const currentVersion = Number(this.getMeta('schema_version') ?? '1');
-    if (currentVersion < 2) {
-      this._getDb().exec(SCHEMA_V2_SQL);
+    if (this.connection) return;
+    fs.mkdirSync(path.dirname(this.dbPath), { recursive: true });
+    const db = new Database(this.dbPath, { timeout: 5000 });
+    try {
+      db.pragma('foreign_keys=ON');
+      initializeSchema(db);
+      db.pragma('journal_mode=WAL');
+      db.pragma('synchronous=FULL');
+      db.transaction(() => {
+        db.prepare(
+          'INSERT OR IGNORE INTO arachne_scope_state(project,agent,root) VALUES(?,?,?)',
+        ).run(this.project, this.agent, this.projectRoot);
+        const row = db
+          .prepare('SELECT root FROM arachne_scope_state WHERE project=? AND agent=?')
+          .get(this.project, this.agent) as { root: unknown };
+        if (row.root !== this.projectRoot)
+          throw new Error('This project and agent already belong to a different source root');
+      }).immediate();
+      this.connection = db;
+      if (this.autoImportLegacy) this.legacyImport = importLegacy(this, this.legacyPath);
+    } catch (error) {
+      db.close();
+      this.connection = null;
+      throw error;
     }
-    if (currentVersion < 3) {
-      this._getDb().exec(SCHEMA_V3_SQL);
-    }
   }
 
-  /** Safe DB accessor — throws if not initialized */
-  private _getDb(): Database.Database {
-    if (!this._db) throw new Error('Store not initialized. Call init() first.');
-    return this._db;
+  migrateLegacy(filename = this.legacyPath, allowRootChange = false): LegacyImportResult {
+    this.legacyImport = importLegacy(this, filename, allowRootChange);
+    return this.legacyImport;
   }
 
-  /** DB instance */
-  get db(): Database.Database { return this._getDb(); }
+  get db(): Database.Database {
+    if (!this.connection) throw new Error('Store not initialized. Call init() first.');
+    return this.connection;
+  }
 
-  /** DB file path */
-  get dbPath(): string { return this._dbPath; }
-
-  /** Backup directory */
-  get backupDir(): string { return this._backupDir; }
-
-  // ── Meta ──
+  get revision(): string {
+    const row = this.db
+      .prepare('SELECT revision FROM arachne_scope_state WHERE project=? AND agent=?')
+      .get(this.project, this.agent) as { revision: unknown };
+    return `${integer(row.revision, 'scope revision')}:${this.db.pragma('data_version', { simple: true })}`;
+  }
 
   _setMeta(key: string, value: string): void {
-    this._getDb().prepare(`
-      INSERT INTO meta (key, value, updated_at)
-      VALUES (?, ?, datetime('now'))
-      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-    `).run(key, value);
+    text(key, 'metadata key');
+    text(value, 'metadata value');
+    if (key === 'schema_version') throw new Error('Schema version is managed by initialization');
+    if (key === 'project_dir' && fs.realpathSync(path.resolve(value)) !== this.projectRoot)
+      throw new Error('Source root differs from the stored scope');
+    this.db
+      .prepare(
+        `INSERT INTO arachne_metadata(project,agent,key,value) VALUES(?,?,?,?)
+      ON CONFLICT(project,agent,key) DO UPDATE SET value=excluded.value`,
+      )
+      .run(this.project, this.agent, key, value);
   }
 
   getMeta(key: string): string | null {
-    const row = this._getDb().prepare('SELECT value FROM meta WHERE key = ?').get(key) as { value: string } | undefined;
-    return row ? row.value : null;
+    if (key === 'schema_version') return ARACHNE_SCHEMA_VERSION;
+    if (key === 'project_dir') return this.projectRoot;
+    const row = this.db
+      .prepare('SELECT value FROM arachne_metadata WHERE project=? AND agent=? AND key=?')
+      .get(this.project, this.agent, key) as { value: unknown } | undefined;
+    return row ? text(row.value, 'metadata value') : null;
   }
 
-  // ── Files ──
-
-  /**
-   * File upsert (compare hash if exists, then update)
-   */
-  upsertFile(relativePath: string, hash: string, language: string, sizeBytes: number, modifiedAt: string): UpsertResult {
-    const db = this._getDb();
-    const existing = db.prepare('SELECT id, hash FROM files WHERE path = ?').get(relativePath) as { id: number; hash: string } | undefined;
-
-    if (existing) {
-      if (existing.hash === hash) {
-        return { action: 'skipped', fileId: existing.id };
-      }
-      db.prepare('DELETE FROM chunks WHERE file_id = ?').run(existing.id);
-      db.prepare(`
-        UPDATE files SET hash = ?, language = ?, size_bytes = ?,
-            chunk_count = 0, indexed_at = datetime('now'), modified_at = ?
-        WHERE id = ?
-      `).run(hash, language, sizeBytes, modifiedAt, existing.id);
-      return { action: 'updated', fileId: existing.id };
-    }
-
-    const result = db.prepare(`
-      INSERT INTO files (path, hash, language, size_bytes, modified_at)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(relativePath, hash, language, sizeBytes, modifiedAt);
-    return { action: 'inserted', fileId: Number(result.lastInsertRowid) };
+  upsertFile(
+    filename: string,
+    hash: string,
+    language: string,
+    sizeBytes: number,
+    modifiedAt: string,
+    force = false,
+  ): UpsertResult {
+    filename = relativePath(filename);
+    text(hash, 'file hash');
+    text(language, 'file language');
+    integer(sizeBytes, 'file size');
+    text(modifiedAt, 'file timestamp');
+    return this.db
+      .transaction((): UpsertResult => {
+        const existing = this.getFileByPath(filename);
+        if (!force && existing?.hash === hash) return { action: 'skipped', fileId: existing.id };
+        if (existing) {
+          this.db.prepare('DELETE FROM arachne_chunks WHERE file_id=?').run(existing.id);
+          this.db
+            .prepare('DELETE FROM arachne_dependencies WHERE source_file_id=?')
+            .run(existing.id);
+          this.db
+            .prepare(
+              `UPDATE arachne_files SET hash=?,language=?,size_bytes=?,modified_at=?,chunk_count=0,
+          content=NULL,indexed_at=datetime('now') WHERE id=?`,
+            )
+            .run(hash, language, sizeBytes, modifiedAt, existing.id);
+          return { action: 'updated', fileId: existing.id };
+        }
+        const result = this.db
+          .prepare(
+            'INSERT INTO arachne_files(project,agent,path,hash,language,size_bytes,modified_at) VALUES(?,?,?,?,?,?,?)',
+          )
+          .run(this.project, this.agent, filename, hash, language, sizeBytes, modifiedAt);
+        return {
+          action: 'inserted',
+          fileId: integer(Number(result.lastInsertRowid), 'file ID'),
+        };
+      })
+      .immediate();
   }
 
-  /** Insert chunks for a file */
   insertChunks(fileId: number, chunks: ChunkRecord[]): void {
-    const db = this._getDb();
-    const stmt = db.prepare(`
-      INSERT INTO chunks (file_id, chunk_type, name, start_line, end_line, content, token_count, search_text)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertMany = db.transaction((items: ChunkRecord[]) => {
-      for (const c of items) {
-        stmt.run(fileId, c.type, c.name, c.startLine, c.endLine, c.content, c.tokenCount, c.searchText);
-      }
-    });
-
-    insertMany(chunks);
-    db.prepare('UPDATE files SET chunk_count = ? WHERE id = ?').run(chunks.length, fileId);
+    this.requireFile(fileId);
+    if (!Array.isArray(chunks) || chunks.length > 100_000) throw new Error('Invalid chunk batch');
+    chunks.forEach(validateChunk);
+    this.db
+      .transaction(() => {
+        const statement = this.db
+          .prepare(`INSERT INTO arachne_chunks(file_id,chunk_type,name,start_line,end_line,content,token_count,search_text)
+        VALUES(?,?,?,?,?,?,?,?)`);
+        for (const chunk of chunks)
+          statement.run(
+            fileId,
+            chunk.type,
+            chunk.name,
+            chunk.startLine,
+            chunk.endLine,
+            chunk.content,
+            chunk.tokenCount,
+            chunk.searchText,
+          );
+        this.db
+          .prepare(
+            'UPDATE arachne_files SET chunk_count=(SELECT count(*) FROM arachne_chunks WHERE file_id=?) WHERE id=?',
+          )
+          .run(fileId, fileId);
+      })
+      .immediate();
   }
 
-  /** Delete file (CASCADE deletes chunks) */
-  removeFile(relativePath: string): Database.RunResult {
-    return this._getDb().prepare('DELETE FROM files WHERE path = ?').run(relativePath);
+  removeFile(filename: string): Database.RunResult {
+    return this.db
+      .prepare('DELETE FROM arachne_files WHERE project=? AND agent=? AND path=?')
+      .run(this.project, this.agent, relativePath(filename));
   }
 
-  /** Get file by path */
-  getFileByPath(relativePath: string): FileRow | undefined {
-    return this._getDb().prepare('SELECT * FROM files WHERE path = ?').get(relativePath) as FileRow | undefined;
+  getFileByPath(filename: string): FileRow | undefined {
+    const row = this.db
+      .prepare(`${FILES} WHERE project=? AND agent=? AND path=?`)
+      .get(this.project, this.agent, relativePath(filename));
+    return row ? fileRow(row) : undefined;
   }
 
-  /** Get all indexed files */
+  requireFile(id: number): FileRow {
+    integer(id, 'file ID');
+    const row = this.db
+      .prepare(`${FILES} WHERE id=? AND project=? AND agent=?`)
+      .get(id, this.project, this.agent);
+    if (!row) throw new Error('File does not belong to this project and agent');
+    return fileRow(row);
+  }
+
   getAllFiles(language?: string): FileRow[] {
-    if (language) {
-      return this._getDb().prepare('SELECT * FROM files WHERE language = ? ORDER BY path').all(language) as FileRow[];
-    }
-    return this._getDb().prepare('SELECT * FROM files ORDER BY path').all() as FileRow[];
+    return this.db
+      .prepare(`${FILES} WHERE project=? AND agent=? AND (? IS NULL OR language=?) ORDER BY path`)
+      .all(this.project, this.agent, language ?? null, language ?? null)
+      .map(fileRow);
   }
 
-  /** Get chunks belonging to a file */
   getChunksByFileId(fileId: number): ChunkRow[] {
-    return this._getDb().prepare('SELECT * FROM chunks WHERE file_id = ? ORDER BY start_line').all(fileId) as ChunkRow[];
+    integer(fileId, 'file ID');
+    return this.db
+      .prepare(`${CHUNKS} WHERE f.project=? AND f.agent=? AND f.id=? ORDER BY c.start_line,c.id`)
+      .all(this.project, this.agent, fileId)
+      .map(chunkRow);
   }
 
-  // ── Search ──
+  *iterateChunksByFileId(fileId: number): Generator<ChunkRow> {
+    integer(fileId, 'file ID');
+    const rows = this.db.prepare(
+      `${CHUNKS} WHERE f.project=? AND f.agent=? AND f.id=? ORDER BY c.start_line,c.id`,
+    );
+    for (const value of rows.iterate(this.project, this.agent, fileId)) yield chunkRow(value);
+  }
 
-  /** LIKE search in search_text (simple keyword search) */
+  getChunksByFileIds(fileIds: number[]): ChunkRow[] {
+    if (!Array.isArray(fileIds) || fileIds.length > MAX_QUERY_ITEMS)
+      throw new Error('Invalid file ID list');
+    if (!fileIds.length) return [];
+    fileIds.forEach((id) => integer(id, 'file ID'));
+    return this.db
+      .prepare(
+        `${CHUNKS} WHERE f.project=? AND f.agent=? AND f.id IN (${fileIds.map(() => '?').join(',')}) ORDER BY f.path,c.start_line,c.id`,
+      )
+      .all(this.project, this.agent, ...fileIds)
+      .map(chunkRow);
+  }
+
+  getChunk(id: number): ChunkRow | undefined {
+    integer(id, 'chunk ID');
+    const row = this.db
+      .prepare(`${CHUNKS} WHERE f.project=? AND f.agent=? AND c.id=?`)
+      .get(this.project, this.agent, id);
+    return row ? chunkRow(row) : undefined;
+  }
+
+  allChunks(language?: string): ChunkRow[] {
+    return this.db
+      .prepare(
+        `${CHUNKS} WHERE f.project=? AND f.agent=? AND (? IS NULL OR f.language=?) ORDER BY c.id`,
+      )
+      .all(this.project, this.agent, language ?? null, language ?? null)
+      .map(chunkRow);
+  }
+
   searchChunks(query: string, limit = 10): ChunkRow[] {
+    integer(limit, 'search limit', MAX_QUERY_ITEMS);
+    text(query, 'search query');
+    if (query.length > 4096) throw new Error('Search query exceeds 4096 characters');
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    if (terms.length === 0) return [];
-
-    const conditions = terms.map(() => "LOWER(c.search_text) LIKE ?").join(' AND ');
-    const params = terms.map(t => `%${t}%`);
-
-    return this._getDb().prepare(`
-      SELECT c.*, f.path as file_path, f.language
-      FROM chunks c
-      JOIN files f ON c.file_id = f.id
-      WHERE ${conditions}
-      ORDER BY c.token_count ASC
-      LIMIT ?
-    `).all(...params, limit) as ChunkRow[];
+    if (!terms.length || limit === 0) return [];
+    const conditions = terms
+      .map(() => "instr(lower(COALESCE(c.search_text,'')),?)>0")
+      .join(' AND ');
+    return this.db
+      .prepare(
+        `${CHUNKS} WHERE f.project=? AND f.agent=? AND ${conditions} ORDER BY c.token_count,c.id LIMIT ?`,
+      )
+      .all(this.project, this.agent, ...terms, limit)
+      .map(chunkRow);
   }
-
-  // ── Stats ──
 
   getStats(): StoreStats {
-    const db = this._getDb();
-    const fileCount = (db.prepare('SELECT COUNT(*) as cnt FROM files').get() as { cnt: number }).cnt;
-    const chunkCount = (db.prepare('SELECT COUNT(*) as cnt FROM chunks').get() as { cnt: number }).cnt;
-    const totalTokens = (db.prepare('SELECT COALESCE(SUM(token_count), 0) as total FROM chunks').get() as { total: number }).total;
-    const languages = db.prepare('SELECT language, COUNT(*) as cnt FROM files GROUP BY language ORDER BY cnt DESC').all() as Array<{ language: string | null; cnt: number }>;
-
-    let dbSize = 0;
-    try { dbSize = fs.statSync(this._dbPath).size; } catch { /* ignore */ }
-
-    return {
-      fileCount,
-      chunkCount,
-      totalTokens,
-      languages,
-      dbSizeBytes: dbSize,
-      dbSizeMB: (dbSize / 1024 / 1024).toFixed(2),
-      lastIndexed: this.getMeta('last_indexed_at'),
-      schemaVersion: this.getMeta('schema_version'),
-    };
+    return this.db
+      .transaction(() => {
+        const totals = this.db
+          .prepare(
+            `SELECT count(*) AS chunks,COALESCE(SUM(c.token_count),0) AS tokens,
+        COALESCE(SUM(CASE WHEN typeof(c.token_count)!='integer' OR c.token_count<0 THEN 1 ELSE 0 END),0) AS invalid
+        FROM arachne_chunks c JOIN arachne_files f ON f.id=c.file_id WHERE f.project=? AND f.agent=?`,
+          )
+          .get(this.project, this.agent) as {
+          chunks: unknown;
+          tokens: unknown;
+          invalid: unknown;
+        };
+        if (totals.invalid !== 0) throw new Error('Invalid stored token count');
+        const groups = this.db
+          .prepare(
+            `SELECT language,count(*) AS cnt FROM arachne_files
+        WHERE project=? AND agent=? GROUP BY language ORDER BY cnt DESC,language`,
+          )
+          .all(this.project, this.agent) as Array<{
+          language: unknown;
+          cnt: unknown;
+        }>;
+        const languages = groups.map((row) => ({
+          language: row.language === null ? null : text(row.language, 'file language'),
+          cnt: integer(row.cnt, 'file count'),
+        }));
+        const size = fs.statSync(this.dbPath).size;
+        return {
+          fileCount: languages.reduce((sum, row) => sum + row.cnt, 0),
+          chunkCount: integer(totals.chunks, 'chunk count'),
+          totalTokens: integer(totals.tokens, 'total tokens'),
+          languages,
+          dbSizeBytes: size,
+          dbSizeMB: (size / 1048576).toFixed(2),
+          lastIndexed: this.getMeta('last_indexed_at'),
+          schemaVersion: ARACHNE_SCHEMA_VERSION,
+        };
+      })
+      .deferred();
   }
 
-  // ── Stale file cleanup ──
-
-  cleanStaleFiles(projectDir: string): number {
-    const db = this._getDb();
-    const allFiles = db.prepare('SELECT id, path FROM files').all() as Array<{ id: number; path: string }>;
-    let removed = 0;
-
-    const deleteStmt = db.prepare('DELETE FROM files WHERE id = ?');
-    const cleanTransaction = db.transaction((files: Array<{ id: number; path: string }>) => {
-      for (const f of files) {
-        const fullPath = path.join(projectDir, f.path);
-        if (!fs.existsSync(fullPath)) {
-          deleteStmt.run(f.id);
-          removed++;
+  cleanStaleFiles(projectDir: string, within = ''): number {
+    if (fs.realpathSync(projectDir) !== this.projectRoot)
+      throw new Error('Cleanup root differs from the stored scope');
+    return this.db
+      .transaction(() => {
+        let removed = 0;
+        for (const file of this.getAllFiles()) {
+          if (within && file.path !== within && !file.path.startsWith(within + '/')) continue;
+          try {
+            fs.statSync(path.join(this.projectRoot, file.path));
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+            removed += this.removeFile(file.path).changes;
+          }
         }
-      }
-    });
-
-    cleanTransaction(allFiles);
-    return removed;
+        return removed;
+      })
+      .immediate();
   }
 
-  // ── Dependencies ──
-
-  insertDependencies(fileId: number, deps: ResolvedDep[]): void {
-    const db = this._getDb();
-    const stmt = db.prepare(`
-      INSERT OR REPLACE INTO dependencies (source_file_id, target_path, target_file_id, dep_type)
-      VALUES (?, ?, ?, ?)
-    `);
-    const insertMany = db.transaction((items: ResolvedDep[]) => {
-      for (const d of items) {
-        stmt.run(fileId, d.targetPath, d.targetFileId ?? null, d.depType || 'import');
-      }
-    });
-    insertMany(deps);
+  insertDependencies(fileId: number, dependencies: ResolvedDep[]): void {
+    this.requireFile(fileId);
+    this.db
+      .transaction(() => {
+        const statement = this.db
+          .prepare(`INSERT INTO arachne_dependencies(source_file_id,target_path,target_file_id,dep_type) VALUES(?,?,?,?)
+        ON CONFLICT(source_file_id,target_path) DO UPDATE SET target_file_id=excluded.target_file_id,dep_type=excluded.dep_type`);
+        for (const dependency of dependencies) {
+          text(dependency.targetPath, 'dependency path');
+          const targetId = dependency.targetFileId ?? null;
+          if (targetId !== null) this.requireFile(targetId);
+          statement.run(fileId, dependency.targetPath, targetId, dependency.depType || 'import');
+        }
+      })
+      .immediate();
   }
 
   clearDependencies(fileId: number): void {
-    this._getDb().prepare('DELETE FROM dependencies WHERE source_file_id = ?').run(fileId);
+    this.requireFile(fileId);
+    this.db.prepare('DELETE FROM arachne_dependencies WHERE source_file_id=?').run(fileId);
   }
 
   getDirectDependencies(fileId: number): DependencyRow[] {
-    return this._getDb().prepare(`
-      SELECT d.*, f.path as target_resolved_path
-      FROM dependencies d
-      LEFT JOIN files f ON d.target_file_id = f.id
-      WHERE d.source_file_id = ?
-    `).all(fileId) as DependencyRow[];
+    this.requireFile(fileId);
+    return this.db
+      .prepare(
+        `SELECT d.*,f.path AS target_resolved_path FROM arachne_dependencies d
+      LEFT JOIN arachne_files f ON f.id=d.target_file_id WHERE d.source_file_id=? ORDER BY d.target_path`,
+      )
+      .all(fileId)
+      .map(dependencyRow);
   }
 
-  /** Recursive dependency traversal (depth-limited BFS) */
-  getTransitiveDependencies(fileId: number, maxDepth = 2): Array<DependencyRow & { depth: number }> {
+  getReverseDependencies(fileId: number): DependencyRow[] {
+    this.requireFile(fileId);
+    return this.db
+      .prepare(
+        `SELECT d.*,f.path AS source_path FROM arachne_dependencies d JOIN arachne_files f ON f.id=d.source_file_id
+      WHERE d.target_file_id=? AND f.project=? AND f.agent=? ORDER BY f.path`,
+      )
+      .all(fileId, this.project, this.agent)
+      .map(dependencyRow);
+  }
+
+  getTransitiveDependencies(
+    fileId: number,
+    maxDepth = 2,
+  ): Array<DependencyRow & { depth: number }> {
+    integer(maxDepth, 'dependency depth', 20);
+    this.requireFile(fileId);
     const visited = new Set<number>();
     const result: Array<DependencyRow & { depth: number }> = [];
-    const queue: Array<{ fileId: number; depth: number }> = [{ fileId, depth: 0 }];
-
-    while (queue.length > 0) {
-      const item = queue.shift()!;
+    const queue = [{ fileId, depth: 0 }];
+    for (let cursor = 0; cursor < queue.length; cursor++) {
+      if (queue.length > MAX_QUERY_ITEMS || result.length > 100_000)
+        throw new Error('Dependency traversal limit reached');
+      const item = queue[cursor]!;
       if (visited.has(item.fileId) || item.depth >= maxDepth) continue;
       visited.add(item.fileId);
-
-      const deps = this.getDirectDependencies(item.fileId);
-      for (const dep of deps) {
-        result.push({ ...dep, depth: item.depth + 1 });
-        if (dep.target_file_id && !visited.has(dep.target_file_id)) {
-          queue.push({ fileId: dep.target_file_id, depth: item.depth + 1 });
-        }
+      for (const dependency of this.getDirectDependencies(item.fileId)) {
+        result.push({ ...dependency, depth: item.depth + 1 });
+        if (dependency.target_file_id !== null && !visited.has(dependency.target_file_id))
+          queue.push({
+            fileId: dependency.target_file_id,
+            depth: item.depth + 1,
+          });
       }
     }
     return result;
   }
 
-  getReverseDependencies(fileId: number): DependencyRow[] {
-    return this._getDb().prepare(`
-      SELECT d.*, f.path as source_path
-      FROM dependencies d
-      JOIN files f ON d.source_file_id = f.id
-      WHERE d.target_file_id = ?
-    `).all(fileId) as DependencyRow[];
-  }
-
-  // ── Access Log ──
-
   logAccess(fileId: number, query: string | null): void {
-    this._getDb().prepare(`
-      INSERT INTO access_log (file_id, query) VALUES (?, ?)
-    `).run(fileId, query ?? null);
+    this.requireFile(fileId);
+    if (query !== null) text(query, 'access query');
+    this.db.prepare('INSERT INTO arachne_access_log(file_id,query) VALUES(?,?)').run(fileId, query);
   }
 
   getRecentFiles(limit = 10): AccessLogRow[] {
-    return this._getDb().prepare(`
-      SELECT DISTINCT a.file_id, f.path, MAX(a.accessed_at) as last_access
-      FROM access_log a
-      JOIN files f ON a.file_id = f.id
-      GROUP BY a.file_id
-      ORDER BY last_access DESC
-      LIMIT ?
-    `).all(limit) as AccessLogRow[];
+    integer(limit, 'recent file limit', MAX_QUERY_ITEMS);
+    return this.db
+      .prepare(
+        `SELECT a.file_id,f.path,MAX(a.accessed_at) AS last_access FROM arachne_access_log a
+      JOIN arachne_files f ON f.id=a.file_id WHERE f.project=? AND f.agent=? GROUP BY a.file_id ORDER BY last_access DESC,f.path LIMIT ?`,
+      )
+      .all(this.project, this.agent, limit)
+      .map(accessRow);
   }
 
   getMostAccessedFiles(limit = 5): AccessLogRow[] {
-    return this._getDb().prepare(`
-      SELECT a.file_id, f.path, COUNT(*) as access_count
-      FROM access_log a
-      JOIN files f ON a.file_id = f.id
-      GROUP BY a.file_id
-      ORDER BY access_count DESC
-      LIMIT ?
-    `).all(limit) as AccessLogRow[];
-  }
-
-  getChunksByFileIds(fileIds: number[]): ChunkRow[] {
-    if (!fileIds || fileIds.length === 0) return [];
-    const placeholders = fileIds.map(() => '?').join(',');
-    return this._getDb().prepare(`
-      SELECT c.*, f.path as file_path, f.language
-      FROM chunks c
-      JOIN files f ON c.file_id = f.id
-      WHERE c.file_id IN (${placeholders})
-      ORDER BY c.file_id, c.start_line
-    `).all(...fileIds) as ChunkRow[];
+    integer(limit, 'frequent file limit', MAX_QUERY_ITEMS);
+    return this.db
+      .prepare(
+        `SELECT a.file_id,f.path,COUNT(*) AS access_count FROM arachne_access_log a
+      JOIN arachne_files f ON f.id=a.file_id WHERE f.project=? AND f.agent=? GROUP BY a.file_id ORDER BY access_count DESC,f.path LIMIT ?`,
+      )
+      .all(this.project, this.agent, limit)
+      .map(accessRow);
   }
 
   cleanAccessLog(maxAgeDays = 30): number {
-    const result = this._getDb().prepare(`
-      DELETE FROM access_log
-      WHERE accessed_at < datetime('now', '-' || ? || ' days')
-    `).run(maxAgeDays);
-    return result.changes;
+    integer(maxAgeDays, 'access retention days', 365000);
+    return this.db
+      .prepare(
+        `DELETE FROM arachne_access_log WHERE accessed_at<datetime('now',?)
+      AND file_id IN (SELECT id FROM arachne_files WHERE project=? AND agent=?)`,
+      )
+      .run(`-${maxAgeDays} days`, this.project, this.agent).changes;
   }
 
-  /** Close DB connection */
   close(): void {
-    if (this._db) {
-      this._db.close();
-      this._db = null;
-    }
+    this.connection?.close();
+    this.connection = null;
   }
 }

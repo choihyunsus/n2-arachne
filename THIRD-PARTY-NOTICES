@@ -1,0 +1,85 @@
+# Source and dependency notices
+
+The repository LICENSE sets custom non-commercial and commercial usage terms. LICENSE-APACHE contains the referenced Apache text.
+
+Arachne document extraction derives from N2 Daebung under the MIT notice in LICENSES/DAEBUNG-MIT. The common Soul schema derives from the Mimir MIT core under LICENSES/MIMIR-CORE-MIT.
+
+The Windows document parser embeds the following Rust dependencies. The listed license files accompany the binary. Runtime npm dependencies retain their notices in their installed packages.
+
+- adler2 2.0.1 — 0BSD OR MIT OR Apache-2.0 — https://crates.io/crates/adler2/2.0.1
+- aes 0.9.4 — MIT OR Apache-2.0 — https://crates.io/crates/aes/0.9.4
+- alloc-no-stdlib 2.0.4 — BSD-3-Clause — https://crates.io/crates/alloc-no-stdlib/2.0.4
+- alloc-stdlib 0.2.4 — BSD-3-Clause — https://crates.io/crates/alloc-stdlib/0.2.4
+- bitflags 2.13.2 — MIT OR Apache-2.0 — https://crates.io/crates/bitflags/2.13.2
+- block-buffer 0.12.1 — MIT OR Apache-2.0 — https://crates.io/crates/block-buffer/0.12.1
+- block-padding 0.4.2 — MIT OR Apache-2.0 — https://crates.io/crates/block-padding/0.4.2
+- brotli-decompressor 5.0.3 — BSD-3-Clause/MIT — https://crates.io/crates/brotli-decompressor/5.0.3
+- bumpalo 3.20.3 — MIT OR Apache-2.0 — https://crates.io/crates/bumpalo/3.20.3
+- cbc 0.2.1 — MIT OR Apache-2.0 — https://crates.io/crates/cbc/0.2.1
+- cfg-if 1.0.5 — MIT OR Apache-2.0 — https://crates.io/crates/cfg-if/1.0.5
+- chacha20 0.10.2 — MIT OR Apache-2.0 — https://crates.io/crates/chacha20/0.10.2
+- cipher 0.5.2 — MIT OR Apache-2.0 — https://crates.io/crates/cipher/0.5.2
+- const-oid 0.10.2 — Apache-2.0 OR MIT — https://crates.io/crates/const-oid/0.10.2
+- core_detect 1.0.0 — MIT/Apache-2.0 — https://crates.io/crates/core_detect/1.0.0
+- cpubits 0.1.1 — MIT OR Apache-2.0 — https://crates.io/crates/cpubits/0.1.1
+- cpufeatures 0.3.1 — MIT OR Apache-2.0 — https://crates.io/crates/cpufeatures/0.3.1
+- crc32fast 1.5.4 — MIT OR Apache-2.0 — https://crates.io/crates/crc32fast/1.5.4
+- crypto-common 0.2.2 — MIT OR Apache-2.0 — https://crates.io/crates/crypto-common/0.2.2
+- digest 0.11.3 — MIT OR Apache-2.0 — https://crates.io/crates/digest/0.11.3
+- ecb 0.2.1 — MIT OR Apache-2.0 — https://crates.io/crates/ecb/0.2.1
+- encoding_rs 0.8.44 — (Apache-2.0 OR MIT) AND BSD-3-Clause — https://crates.io/crates/encoding_rs/0.8.44
+- equivalent 1.0.3 — Apache-2.0 OR MIT — https://crates.io/crates/equivalent/1.0.3
+- flate2 1.1.11 — MIT OR Apache-2.0 — https://crates.io/crates/flate2/1.1.11
+- getrandom 0.4.3 — MIT OR Apache-2.0 — https://crates.io/crates/getrandom/0.4.3
+- hashbrown 0.17.1 — MIT OR Apache-2.0 — https://crates.io/crates/hashbrown/0.17.1
+- hybrid-array 0.4.15 — MIT OR Apache-2.0 — https://crates.io/crates/hybrid-array/0.4.15
+- indexmap 2.14.2 — Apache-2.0 OR MIT — https://crates.io/crates/indexmap/2.14.2
+- inout 0.2.5 — MIT OR Apache-2.0 — https://crates.io/crates/inout/0.2.5
+- itoa 1.0.18 — MIT OR Apache-2.0 — https://crates.io/crates/itoa/1.0.18
+- log 0.4.35 — MIT OR Apache-2.0 — https://crates.io/crates/log/0.4.35
+- lopdf 0.47.0 — MIT — https://crates.io/crates/lopdf/0.47.0
+- md-5 0.11.0 — MIT OR Apache-2.0 — https://crates.io/crates/md-5/0.11.0
+- memchr 2.8.3 — Unlicense OR MIT — https://crates.io/crates/memchr/2.8.3
+- miniz_oxide 0.9.1 — MIT OR Zlib OR Apache-2.0 — https://crates.io/crates/miniz_oxide/0.9.1
+- multiversion_no_op 1.0.0 — Apache-2.0 OR MIT — https://crates.io/crates/multiversion_no_op/1.0.0
+- nom 8.0.0 — MIT — https://crates.io/crates/nom/8.0.0
+- proc-macro2 1.0.107 — MIT OR Apache-2.0 — https://crates.io/crates/proc-macro2/1.0.107
+- quick-xml 0.41.0 — MIT — https://crates.io/crates/quick-xml/0.41.0
+- quote 1.0.47 — MIT OR Apache-2.0 — https://crates.io/crates/quote/1.0.47
+- rand 0.10.3 — MIT OR Apache-2.0 — https://crates.io/crates/rand/0.10.3
+- rand_core 0.10.1 — MIT OR Apache-2.0 — https://crates.io/crates/rand_core/0.10.1
+- rangemap 1.8.0 — MIT/Apache-2.0 — https://crates.io/crates/rangemap/1.8.0
+- rustversion 1.0.23 — MIT OR Apache-2.0 — https://crates.io/crates/rustversion/1.0.23
+- scopeguard 1.2.0 — MIT OR Apache-2.0 — https://crates.io/crates/scopeguard/1.2.0
+- serde_core 1.0.229 — MIT OR Apache-2.0 — https://crates.io/crates/serde_core/1.0.229
+- serde_json 1.0.154 — MIT OR Apache-2.0 — https://crates.io/crates/serde_json/1.0.154
+- sha2 0.11.1 — MIT OR Apache-2.0 — https://crates.io/crates/sha2/0.11.1
+- simd-adler32 0.3.10 — MIT — https://crates.io/crates/simd-adler32/0.3.10
+- simdutf8 0.1.5 — MIT OR Apache-2.0 — https://crates.io/crates/simdutf8/0.1.5
+- stringprep 0.1.5 — MIT/Apache-2.0 — https://crates.io/crates/stringprep/0.1.5
+- syn 3.0.9 — MIT OR Apache-2.0 — https://crates.io/crates/syn/3.0.9
+- thiserror 2.0.21 — MIT OR Apache-2.0 — https://crates.io/crates/thiserror/2.0.21
+- thiserror-impl 2.0.21 — MIT OR Apache-2.0 — https://crates.io/crates/thiserror-impl/2.0.21
+- tinyvec 1.13.3 — Zlib OR Apache-2.0 OR MIT — https://crates.io/crates/tinyvec/1.13.3
+- typed-path 0.13.0 — MIT OR Apache-2.0 — https://crates.io/crates/typed-path/0.13.0
+- typenum 1.20.1 — MIT OR Apache-2.0 — https://crates.io/crates/typenum/1.20.1
+- unicode-bidi 0.3.18 — MIT OR Apache-2.0 — https://crates.io/crates/unicode-bidi/0.3.18
+- unicode-ident 1.0.27 — (MIT OR Apache-2.0) AND Unicode-3.0 — https://crates.io/crates/unicode-ident/1.0.27
+- unicode-normalization 0.1.26 — (MIT OR Apache-2.0) AND Unicode-3.0 — https://crates.io/crates/unicode-normalization/0.1.26
+- unicode-properties 0.1.5 — (MIT OR Apache-2.0) AND Unicode-3.0 — https://crates.io/crates/unicode-properties/0.1.5
+- weezl 0.2.1 — MIT OR Apache-2.0 — https://crates.io/crates/weezl/0.2.1
+- windows-link 0.2.1 — MIT OR Apache-2.0 — https://crates.io/crates/windows-link/0.2.1
+- windows-sys 0.61.2 — MIT OR Apache-2.0 — https://crates.io/crates/windows-sys/0.61.2
+- zip 9.4.1 — MIT — https://crates.io/crates/zip/9.4.1
+- zlib-rs 0.6.8 — Zlib — https://crates.io/crates/zlib-rs/0.6.8
+- zmij 1.0.23 — MIT — https://crates.io/crates/zmij/1.0.23
+- zopfli 0.8.4 — Apache-2.0 — https://crates.io/crates/zopfli/0.8.4
+
+Rust 1.98.0 standard-library attribution and referenced license texts are in LICENSES/rust-1.98.0. The Windows executable was built with the Rust MSVC toolchain.
+
+한국어 안내
+
+저장소의 사용 조건은 LICENSE에 있습니다. 이식한 대붕이 문서 처리 코드와 Mimir 공통 스키마의 MIT 고지, 문서 파서 실행 파일에 포함한 Rust 의존성 및 표준 라이브러리 고지를 LICENSES에 제공합니다. npm 실행 의존성의 고지는 설치된 각 패키지에 있습니다.
+
+alloc-stdlib 0.2.4 notice retrieved from its source commit
+https://raw.githubusercontent.com/dropbox/rust-alloc-no-stdlib/ae42d22078b98549e987d2f03d12df7b984fde47/LICENSE
