@@ -121,7 +121,7 @@ function readDirectory(
 export function readSource(root: string, filename: string, maximum: number): string {
   integer(maximum, 'source byte limit', 10485760);
   const resolved = fs.realpathSync(filename);
-  const relative = path.relative(root, resolved);
+  const relative = path.relative(fs.realpathSync(root), resolved);
   if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative))
     throw new Error('Source resolves outside the configured root');
   const named = fs.lstatSync(resolved);

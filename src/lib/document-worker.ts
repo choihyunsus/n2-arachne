@@ -109,7 +109,7 @@ function checkedDocument(
 ): { resolved: string; stat: fs.Stats } {
   integer(maximum, 'document byte limit', MAX_DOCUMENT_BYTES);
   const resolved = fs.realpathSync(filename);
-  const within = path.relative(root, resolved);
+  const within = path.relative(fs.realpathSync(root), resolved);
   if (within === '..' || within.startsWith('..' + path.sep) || path.isAbsolute(within))
     throw new Error('Document resolves outside its source root');
   if (!DOCUMENT_FORMATS.has(path.extname(resolved).slice(1).toLowerCase()))

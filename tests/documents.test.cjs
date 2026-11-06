@@ -280,3 +280,22 @@ test('actual PDF worker bounds decompression and accepts the next ordinary reque
     f.close();
   }
 });
+
+test('document and source readers accept a canonical alias of their configured root', async () => {
+  const f = fixture();
+  const alias = path.join(f.root, 'alias');
+  try {
+    fs.symlinkSync(f.root, alias, process.platform === 'win32' ? 'junction' : 'dir');
+    fs.writeFileSync(path.join(f.root, 'fixture.pdf'), pdf('aliasKeyword'));
+    fs.writeFileSync(path.join(f.root, 'fixture.ts'), 'const aliasKeyword=1;');
+    assert.match(await extractDocument(alias, path.join(alias, 'fixture.pdf')), /aliasKeyword/);
+    const { readSource } = require('../dist/lib/scan-files');
+    assert.match(readSource(alias, path.join(alias, 'fixture.ts'), 1024), /aliasKeyword/);
+    const inner = path.join(f.root, 'inner');
+    fs.mkdirSync(inner);
+    await assert.rejects(extractDocument(inner, path.join(alias, 'fixture.pdf')), /outside/);
+    assert.throws(() => readSource(inner, path.join(alias, 'fixture.ts'), 1024), /outside/);
+  } finally {
+    f.close();
+  }
+});
