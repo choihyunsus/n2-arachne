@@ -119,6 +119,8 @@ Receipts make retries idempotent. Initial import is synchronous and may require 
 | Embedding batch | 64 default, library maximum 256, 20-second check between requests |
 | Snapshot | 2 GiB, one million copied rows, 120-second copy checks |
 
+Windows uses a process-memory Job limit and Linux uses an address-space limit. macOS samples peak resident memory every 10 ms and terminates an over-budget worker. Sampling can briefly exceed the threshold.
+
 Checks bound individual stages. Request timeouts can extend an embedding batch beyond its between-request budget. Partial scans preserve unseen prior records and report incomplete coverage. Failed documents retain their previous index content. Review diagnostics when refreshing or narrowing a source selection.
 
 ## Library
@@ -161,7 +163,7 @@ cargo +1.98.0 test --locked --manifest-path document-worker/Cargo.toml --jobs 2
 cargo +1.98.0 test --locked --manifest-path native/Cargo.toml --jobs 2
 ```
 
-Tests cover actual MCP calls, cancellation/retry, restarted persistence, shared ownership, legacy import, rollback, snapshots, document formats and provider failures. Local Windows verification exercises the included parser. CI runs source checks on Windows, Linux and macOS. Consult the release commit's run for platform results. Two OS resource-limit FFI blocks require manual unsafe-code review alongside static checks.
+Tests cover actual MCP calls, cancellation/retry, restarted persistence, shared ownership, legacy import, rollback, snapshots, document formats and provider failures. Local Windows verification exercises the included parser. CI runs source checks on Windows, Linux and macOS. Consult the release commit's run for platform results. Three OS memory-management FFI blocks require manual unsafe-code review alongside static checks.
 
 ## License
 

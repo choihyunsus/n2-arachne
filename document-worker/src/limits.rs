@@ -29,7 +29,7 @@ pub fn memory_guard() -> std::io::Result<std::os::windows::io::OwnedHandle> {
     }
 }
 
-#[cfg(unix)]
+#[cfg(all(unix, not(target_os = "macos")))]
 pub fn memory_guard() -> std::io::Result<()> {
     let limit = libc::rlimit {
         rlim_cur: MEMORY_LIMIT as _,
@@ -40,4 +40,13 @@ pub fn memory_guard() -> std::io::Result<()> {
         return Err(std::io::Error::last_os_error());
     }
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+#[path = "memory_macos.rs"]
+mod macos;
+
+#[cfg(target_os = "macos")]
+pub fn memory_guard() -> std::io::Result<()> {
+    macos::start_watchdog(MEMORY_LIMIT)
 }
