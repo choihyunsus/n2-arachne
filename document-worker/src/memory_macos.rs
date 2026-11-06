@@ -60,6 +60,7 @@ mod tests {
             .args([
                 "--exact",
                 "limits::macos::tests::macos_watchdog_stops_an_over_budget_child",
+                "--nocapture",
             ])
             .env(CHILD_FLAG, "1")
             .output()
