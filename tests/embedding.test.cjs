@@ -85,8 +85,9 @@ async function provider() {
     state,
     endpoint: `http://127.0.0.1:${server.address().port}/nested/api`,
     async close() {
+      const closed = new Promise((resolve) => server.close(resolve));
       server.closeAllConnections();
-      await new Promise((resolve) => server.close(resolve));
+      await closed;
     },
   };
 }
@@ -117,7 +118,7 @@ test('modern and legacy APIs preserve endpoint prefixes and reject invalid model
   }
 });
 
-test('response bodies and body-reading time are bounded', async () => {
+test('response bodies and body-reading time are bounded', { timeout: 5000 }, async (context) => {
   const fixture = await provider();
   const client = new Embedding({
     model: 'fixture',
@@ -126,14 +127,19 @@ test('response bodies and body-reading time are bounded', async () => {
   });
   try {
     fixture.state.mode = 'large';
+    context.diagnostic('Checking the response byte limit');
     await assert.rejects(client.embed('apple'), /byte limit/);
     fixture.state.mode = 'hang';
+    context.diagnostic('Checking the response body deadline');
     await assert.rejects(client.embed('apple'));
     fixture.state.mode = 'normal';
     client.resetAvailability();
+    context.diagnostic('Checking provider recovery');
     assert.equal(await client.isAvailable(), true);
   } finally {
+    context.diagnostic('Closing the fixture HTTP server');
     await fixture.close();
+    context.diagnostic('Fixture HTTP server closed');
   }
 });
 

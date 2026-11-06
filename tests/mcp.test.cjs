@@ -300,8 +300,9 @@ test('MCP connects while embeddings and automatic document indexing are still pe
     assert.match(success(await connection.call({ action: 'status' })), /Inactive/);
   } finally {
     if (connection) await connection.client.close();
+    const closed = new Promise((resolve) => server.close(resolve));
     server.closeAllConnections();
-    await new Promise((resolve) => server.close(resolve));
+    await closed;
     fs.rmSync(root, {
       recursive: true,
       force: true,
