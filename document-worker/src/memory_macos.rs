@@ -26,7 +26,7 @@ pub(super) fn start_watchdog(limit: usize) -> io::Result<()> {
         .spawn(move || loop {
             std::thread::sleep(Duration::from_millis(10));
             match peak_resident_bytes() {
-                Ok(bytes) if bytes <= limit => {}
+                Ok(bytes) if bytes <= limit => continue,
                 _ => {
                     eprintln!("Document memory budget exceeded or measurement failed");
                     std::process::exit(125);
@@ -48,9 +48,10 @@ mod tests {
     #[test]
     fn macos_watchdog_stops_an_over_budget_child() {
         const CHILD_FLAG: &str = "ARACHNE_MEMORY_TEST_CHILD";
+        const MIB: usize = 1024 * 1024;
         if std::env::var_os(CHILD_FLAG).is_some() {
-            start_watchdog(peak_resident_bytes().unwrap() + 1024 * 1024).unwrap();
-            let bytes = vec![1_u8; 8 * 1024 * 1024];
+            start_watchdog(peak_resident_bytes().unwrap() + MIB).unwrap();
+            let bytes = vec![1_u8; 8 * MIB];
             std::hint::black_box(&bytes);
             std::thread::sleep(Duration::from_secs(2));
             panic!("Memory watchdog did not stop the child");
