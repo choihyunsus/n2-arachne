@@ -6,7 +6,20 @@
 
 [English](README.md)
 
+<p align="center">
+  <img src="https://github.com/choihyunsus/n2-arachne/raw/refs/heads/main/docs/images/comic.png" alt="많은 파일에서 함수를 찾다가 → 검색 목록을 만들고 → 관련 내용을 찾아 → 필요한 소스를 읽습니다." width="640">
+</p>
+
+많은 파일에서 함수를 찾다가 → 검색 목록을 만들고 → 관련 내용을 찾아 → 필요한 소스를 읽습니다.
+
+기능을 이야기로 표현한 만화입니다. 실제 앱 화면은 아닙니다.
+
+<details>
+<summary>동작 흐름 펼쳐 보기</summary>
+
 ![파일 읽기 → 검색용 목록 만들기 → 관련 내용 찾기](https://github.com/choihyunsus/n2-arachne/raw/refs/heads/main/docs/images/overview.ko.svg)
+
+</details>
 
 ## 이런 때 사용하세요
 

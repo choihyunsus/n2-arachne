@@ -6,7 +6,20 @@
 
 [한국어](README.ko.md)
 
+<p align="center">
+  <img src="https://github.com/choihyunsus/n2-arachne/raw/refs/heads/main/docs/images/comic.png" alt="Search project code and documents to find the parts an AI should read for the current task." width="640">
+</p>
+
+Search project code and documents to find the parts an AI should read for the current task.
+
+A story illustrating the feature, rather than a screenshot of the app.
+
+<details>
+<summary>View the workflow</summary>
+
 ![Read project files → Build a search index → Find relevant content](https://github.com/choihyunsus/n2-arachne/raw/refs/heads/main/docs/images/overview.svg)
+
+</details>
 
 ## When to use it
 
